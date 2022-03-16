@@ -82,8 +82,8 @@ impl DefaultTimer {
 }
 
 impl TimerRefFactory for DefaultTimer {
-    fn timer_ref(&self) -> timer::TimerRef {
-        self.inner.timer_ref()
+    fn timer_ref(&self) -> timer::TimerCore {
+        Box::new(self.inner.timer_ref())
     }
 }
 impl TimerComponent for DefaultTimer {

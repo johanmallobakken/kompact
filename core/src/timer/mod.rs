@@ -2,10 +2,12 @@ use uuid::Uuid;
 
 use hierarchical_hash_wheel_timer::{
     thread_timer::{TimerRef as GenericTimerRef, TimerWithThread as GenericTimerWithThread},
+    simulation::{SimulationTimer as GenericSimulationTimer},
     OneshotState,
     PeriodicState,
     TimerEntry as GenericTimerEntry,
     TimerReturn as GenericTimerReturn,
+    Timer as LowlevelTimer,
 };
 
 pub use hierarchical_hash_wheel_timer::TimerError;
@@ -52,6 +54,11 @@ pub type TimerRef = GenericTimerRef<Uuid, ActorRefState, ActorRefState>;
 
 /// The concrete vairant of timer thread used in Kompact
 pub type TimerWithThread = GenericTimerWithThread<Uuid, ActorRefState, ActorRefState>;
+
+// The concrete variant of the simulation timer
+pub type SimulationTimer = GenericSimulationTimer<Uuid, ActorRefState, ActorRefState>;
+
+pub type TimerCore = Box<dyn LowlevelTimer<Id = Uuid, OneshotState = ActorRefState, PeriodicState = ActorRefState> + Send>;
 
 /// The necessary state for Kompact timers
 #[derive(Debug)]
