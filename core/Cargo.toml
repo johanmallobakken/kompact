@@ -55,7 +55,7 @@ slog-async 						= "2"
 slog-term 						= "2"
 rustc-hash 						= "1.1"
 hocon 							= {version = "0.3", default-features = false}
-hierarchical_hash_wheel_timer 	= "1.1"
+hierarchical_hash_wheel_timer 	= { git = "https://github.com/johanmallobakken/rust-hash-wheel-timer" }
 owning_ref 						= "0.4"
 futures 						= "0.3"
 async-std 						= "1.6"
@@ -65,6 +65,7 @@ lazy_static                     = "1.4.0"
 rand                            = "0.8.0"
 rand_chacha                     = "0.3.1"
 async-task                      = "4.1.0"
+backtrace                       = "0.3"
 
 # Optional
 protobuf 						= {version = "2", optional = true, features = ["with-bytes"]}

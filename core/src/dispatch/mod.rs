@@ -338,10 +338,12 @@ pub enum NetworkStatusRequest {
 pub struct NetworkDispatcher {
     ctx: ComponentContext<NetworkDispatcher>,
     /// Local map of connection statuses
+    /// Maybe just store a queue instead of connectionstate
     connections: NetHashMap<SocketAddr, ConnectionState>,
     /// Network configuration for this dispatcher
     cfg: NetworkConfig,
     /// Shared lookup structure for mapping [actor paths](ActorPath) and [actor refs](ActorRef)
+    /// send messages for local actors 
     lookup: Arc<ArcSwap<ActorStore>>,
     // Fields initialized at [Start](ControlEvent::Start) – they require ComponentContextual awareness
     /// Bridge into asynchronous networking layer
@@ -505,6 +507,7 @@ impl NetworkDispatcher {
     fn schedule_reaper(&mut self) {
         if !self.reaper.is_scheduled() {
             // First time running; mark as scheduled and jump straight to scheduling
+            println!("schedule_reaper");
             self.reaper.schedule();
         } else {
             // Repeated schedule; prune deallocated ActorRefs and update strategy accordingly
@@ -1063,7 +1066,9 @@ impl Dispatcher for NetworkDispatcher {
                     Some(ref net_bridge) => net_bridge.local_addr().expect("If net bridge is ready, port should be as well!"),
                     None => panic!("You must wait until the socket is bound before attempting to create a system path!"),
                 };
+                println!("SYSPATH {} {} {}", self.cfg.transport, bound_addr.ip(), bound_addr.port());
                 let sp = SystemPath::new(self.cfg.transport, bound_addr.ip(), bound_addr.port());
+                println!("SYSTEMPATH IS BEING SET");
                 self.system_path = Some(sp.clone());
                 sp
             }

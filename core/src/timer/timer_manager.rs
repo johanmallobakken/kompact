@@ -1,11 +1,17 @@
 use super::*;
-use hierarchical_hash_wheel_timer::Timer as LowlevelTimer;
+use hierarchical_hash_wheel_timer::{
+    Timer as LowlevelTimer,
+};
+
 use std::{
     collections::HashMap,
     fmt,
     rc::Rc,
     sync::{Arc, Weak},
     time::Duration,
+    thread::{
+        current,
+    },
 };
 use uuid::Uuid;
 
@@ -32,6 +38,7 @@ impl ScheduledTimer {
         ScheduledTimer(id)
     }
 }
+
 
 /// API exposed within a component by a timer implementation
 ///
@@ -213,13 +220,14 @@ pub(crate) enum ExecuteAction<C: ComponentDefinition> {
 }
 
 pub(crate) struct TimerManager<C: ComponentDefinition> {
-    timer: timer::TimerRef,
+    timer: TimerRef,
     timer_queue: Arc<ConcurrentQueue<Timeout>>,
     handles: HashMap<Uuid, TimerHandle<C>>,
 }
 
 impl<C: ComponentDefinition> TimerManager<C> {
-    pub(crate) fn new(timer: timer::TimerRef) -> TimerManager<C> {
+    pub(crate) fn new(timer: TimerRef) -> TimerManager<C> {
+
         TimerManager {
             timer,
             timer_queue: Arc::new(ConcurrentQueue::new()),
@@ -352,6 +360,7 @@ impl TimerActorRef {
             (Some(q), Some(c)) => {
                 let res = c.core().increment_work();
                 q.push(timeout);
+                println!("TIMER");
                 if let SchedulingDecision::Schedule = res {
                     let system = c.core().system();
                     system.schedule(c.clone());

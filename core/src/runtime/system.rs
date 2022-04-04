@@ -642,6 +642,7 @@ impl KompactSystem {
     /// # system.shutdown().expect("shutdown");
     /// ```
     pub fn start(&self, c: &Arc<impl AbstractComponent + ?Sized>) -> () {
+        println!("start");
         self.inner.assert_not_poisoned();
         c.enqueue_control(ControlEvent::Start);
     }

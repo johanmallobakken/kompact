@@ -65,6 +65,7 @@
 //!     - If you are concered about this security risk, you can disable this feature by using `--no-default-features`.
 
 //#![deny(missing_docs)]
+#![feature(thread_id_value)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::match_ref_pats)]
 #![allow(clippy::new_without_default)]
@@ -256,7 +257,11 @@ pub mod prelude {
         supervision::{FaultContext, RecoveryHandler},
         Never,
         simulator::{
-            SimulationScenario
+            SimulationScenario,
+            simulation_network_dispatcher::{
+                SimulationNetworkConfig,
+                SimulationNetworkDispatcher
+            }
         }
     };
 
