@@ -14,10 +14,11 @@ use crossbeam_channel::{unbounded as channel, RecvError, SendError, Sender};
 use ipnet::IpNet;
 use mio::{Interest, Waker};
 pub use std::net::SocketAddr;
-use std::{io, net::IpAddr, panic, sync::Arc, thread, time::Duration};
+use std::{io, net::IpAddr, panic, sync::Arc, thread, time::Duration, alloc::System};
 use uuid::Uuid;
 use simulation_network::SimulationNetwork;
 
+#[derive(Clone)]
 pub struct SimulationBridge {
     /// Network-specific configuration
     //cfg: BridgeConfig,
@@ -31,10 +32,10 @@ pub struct SimulationBridge {
     /// Tokio Runtime
     // tokio_runtime: Option<Runtime>,
     /// Reference back to the Kompact dispatcher
-    dispatcher: Option<DispatcherRef>,
     /// Socket the network actually bound on
-    bound_address: Option<SocketAddr>,
-    network: Arc<Mutex<SimulationNetwork>>
+    bound_address: SocketAddr,
+    system_path: SystemPath,
+    network: Arc<Mutex<SimulationNetwork>>,
 }
 
 impl SimulationBridge {
@@ -43,49 +44,42 @@ impl SimulationBridge {
         network_log: KompactLogger,
         bridge_log: KompactLogger,
         addr: SocketAddr,
-        dispatcher_ref: DispatcherRef,
         network_config: &SimulationNetworkConfig,
-        network: Arc<Mutex<SimulationNetwork>>
+        network: Arc<Mutex<SimulationNetwork>>,
+        transport: Transport
     ) -> (Self, SocketAddr) {
-
-        let mut s_addr = addr;
-
-        {
-            println!("REGISTERING SYSTEM");
-            let mut net = network.lock().unwrap();
-            s_addr.set_port(net.get_port());
-            net.register_system(s_addr, lookup);
-        }
-
-        println!("THIS IS PORT: {}", s_addr.port());
+        let syspath = SystemPath::new(transport, addr.ip(), addr.port());
+        network.lock().unwrap().register_system_path(addr, syspath.clone());
 
         let bridge = SimulationBridge {
             log: bridge_log,
-            dispatcher: Some(dispatcher_ref),
-            bound_address: Some(s_addr),
+            bound_address: addr,
+            system_path: syspath,
             network,
         };
+
         (bridge, addr)
     }
 
-    /// Returns the local address if already bound
-    pub fn local_addr(&self) -> &Option<SocketAddr> {
-        match self.bound_address {
-            Some(addr) => println!("bound_address {}", addr.ip()),
-            None => println!("NO bound_address"),
-        }
-        
-        &self.bound_address
+    pub fn set_system_path(&mut self, syspath: SystemPath){
+        self.system_path = syspath.clone();
+        println!("Setting path");
+        self.network.lock().unwrap().register_system_path(self.bound_address, syspath);
     }
 
-    pub fn get_actor_store(&self) -> &Option<SocketAddr> {
-        &self.bound_address
+    /// Returns the local address if already bound
+    pub fn local_addr(&self) -> SocketAddr {
+        self.bound_address
     }
+
+    /*pub fn get_actor_store(&self) -> SocketAddr {
+        self.bound_address
+    }*/
 
     /// Sets the dispatcher reference, returning the previously stored one
-    pub fn set_dispatcher(&mut self, dispatcher: DispatcherRef) -> Option<DispatcherRef> {
+    /*pub fn set_dispatcher(&mut self, dispatcher: DispatcherRef) -> Option<DispatcherRef> {
         std::mem::replace(&mut self.dispatcher, Some(dispatcher))
-    }
+    }*/
 
     /// Forwards `serialized` to the NetworkThread and makes sure that it will wake up.
     pub(crate) fn route(
@@ -94,16 +88,32 @@ impl SimulationBridge {
         data: DispatchData,
         protocol: Protocol,
     ) -> Result<(), NetworkBridgeErr> {
-        //println!("ROUTE IN BRIDGE");
+        println!("ROUTE IN BRIDGE");
         match protocol {
             Protocol::Tcp => {
-                let _ = self.network.lock().unwrap().send(DispatchEvent::SendTcp(addr, data));
+                println!("tcp????????");
+                self.network.lock().unwrap().send(self.system_path(), DispatchEvent::SendTcp(addr, data));
             }
             Protocol::Udp => {
-                let _ = self.network.lock().unwrap().send(DispatchEvent::SendUdp(addr, data));
+                println!("UDP????????");
+                self.network.lock().unwrap().send(self.system_path(), DispatchEvent::SendUdp(addr, data));
             }
         }
         Ok(())
+    }
+
+    fn system_path(&self) -> SystemPath {
+        self.system_path.clone()
+        /* 
+        match self.system_path {
+            Some(ref path) => path.clone(),
+            None => {
+                let bound_addr = self.local_addr();
+                let sp = SystemPath::new(self.transport, bound_addr.ip(), bound_addr.port());
+                self.system_path = Some(sp.clone());
+                sp
+            }
+        }*/
     }
 
     pub fn connect(&self, proto: Transport, addr: SocketAddr) -> Result<(), NetworkBridgeErr> {

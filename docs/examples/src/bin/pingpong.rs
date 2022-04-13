@@ -2,6 +2,7 @@ use kompact::prelude::*;
 use kompact::{prelude::*, serde_serialisers::*};
 use serde::{Deserialize, Serialize};
 
+
 use std::{
     time::Duration,
     thread::{
@@ -13,11 +14,13 @@ use std::{
 struct Pinger {
     ctx: ComponentContext<Self>,
     actor_path: ActorPath,
+    counter: u64
 }
 
 #[derive(ComponentDefinition)]
 struct Ponger {
     ctx: ComponentContext<Self>,
+    counter: u64
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -42,6 +45,7 @@ impl Pinger {
         Pinger {
             ctx: ComponentContext::uninitialised(),
             actor_path: actor_path,
+            counter: 0
         }
     }
 }
@@ -50,6 +54,7 @@ impl Ponger {
     pub fn new() -> Self {
         Ponger {
             ctx: ComponentContext::uninitialised(),
+            counter: 0
         }
     }
 }
@@ -57,7 +62,7 @@ impl Ponger {
 impl ComponentLifecycle for Pinger {
     fn on_start(&mut self) -> Handled {
         println!("On start Pinger");
-        info!(self.log(), "Pinger started!");
+        //info!(self.log(), "Pinger started!");
         self.actor_path.tell((Ping, Serde), self);
         Handled::Ok
     }
@@ -67,7 +72,7 @@ impl ComponentLifecycle for Pinger {
 impl ComponentLifecycle for Ponger {
     fn on_start(&mut self) -> Handled {
         println!("On start Ponger");
-        info!(self.log(), "Ponger started!");
+        //info!(self.log(), "Ponger started!");
         Handled::Ok
     }
 }
@@ -83,7 +88,9 @@ impl Actor for Pinger {
         let sender = msg.sender;
         match msg.data.try_deserialise::<Pong, Serde>() {
             Ok(_ping) => {
-                info!(self.log(), "RECIEVED PONG IN PINGER");
+                self.counter += 1;
+                println!("RRRRRRRRR pong {} in pinger", self.counter);
+                //info!(self.log(), "RECIEVED PONG {} IN PINGER", self.counter);
                 sender.tell((Ping, Serde), self)
             }
             Err(e) => warn!(self.log(), "Invalid data: {:?}", e),
@@ -103,7 +110,9 @@ impl Actor for Ponger {
         let sender = msg.sender;
         match msg.data.try_deserialise::<Ping, Serde>() {
             Ok(_ping) => {
-                info!(self.log(), "RECIEVED PING IN PONGER");
+                self.counter += 1;
+                println!("RRRRRRRRR ping {} in ponger", self.counter);
+                //info!(self.log(), "RECIEVED PING {} IN PONGER", self.counter);
                 sender.tell((Pong, Serde), self)
             }
             Err(e) => warn!(self.log(), "Invalid data: {:?}", e),
@@ -134,7 +143,6 @@ pub fn sim() {
     sys1.start(&pinger);
     println!("start in main 2");
     
-    /* 
     println!("start in main 1 {:?}", simulation.simulate_step());
     println!("start in main 2 {:?}", simulation.simulate_step());
     println!("start in main 3 {:?}", simulation.simulate_step());
@@ -149,20 +157,37 @@ pub fn sim() {
     println!("start in main 12 {:?}", simulation.simulate_step());
     println!("start in main 13 {:?}", simulation.simulate_step());
     println!("start in main 14 {:?}", simulation.simulate_step());
+
+    simulation.break_link(sys1.clone(), sys2.clone());
+
     println!("start in main 15 {:?}", simulation.simulate_step());
     println!("start in main 16 {:?}", simulation.simulate_step());
     println!("start in main 17 {:?}", simulation.simulate_step());
     println!("start in main 18 {:?}", simulation.simulate_step());
     println!("start in main 19 {:?}", simulation.simulate_step());
-    */
+    println!("start in main 20 {:?}", simulation.simulate_step());
+    println!("start in main 21 {:?}", simulation.simulate_step());
+    println!("start in main 22 {:?}", simulation.simulate_step());
+    println!("start in main 23 {:?}", simulation.simulate_step());
+    println!("start in main 24 {:?}", simulation.simulate_step());
 
-    simulation.simulate_to_completion();
+    println!("done simulation steps");
 
-    std::thread::sleep(Duration::from_millis(1000));
-    sys1.await_termination(); //shutdown().expect("shutdown");
+    //simulation.simulate_to_completion();
+    println!("THREAD ID main pp: {:?}", std::thread::current().id());
+
+    //std::thread::sleep(core::time::Duration::from_millis(1000));
+
+    //simulation.set_scheduling_choice(SimulatedScheduling::Now);
+
+    println!("FUTURE EXECUTOR FROM NOW");
+    
+    simulation.shutdown_system(sys1);
+    //sys1.shutdown_async();
     println!("shutdown");
 
-    sys2.await_termination(); //.shutdown().expect("shutdown");
+    simulation.shutdown_system(sys2);
+    //sys2.shutdown_async();
     println!("shutdown 2");
 } 
 

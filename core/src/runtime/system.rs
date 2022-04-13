@@ -130,6 +130,7 @@ impl KompactSystem {
     }
 
     pub(crate) fn schedule(&self, c: Arc<dyn CoreContainer>) -> () {
+        println!("System: scheduler schedule");
         self.scheduler.schedule(c);
     }
 
@@ -642,7 +643,7 @@ impl KompactSystem {
     /// # system.shutdown().expect("shutdown");
     /// ```
     pub fn start(&self, c: &Arc<impl AbstractComponent + ?Sized>) -> () {
-        println!("start");
+        println!("SYSSTART");
         self.inner.assert_not_poisoned();
         c.enqueue_control(ControlEvent::Start);
     }
@@ -705,6 +706,15 @@ impl KompactSystem {
     /// # system.shutdown().expect("shutdown");
     /// ```
     pub fn start_notify(&self, c: &Arc<impl AbstractComponent + ?Sized>) -> KFuture<()> {
+
+        println!("THREAD ID startnotify: {:?}", std::thread::current().id());
+
+        match std::thread::current().name() {
+            None => println!("start notify? no thread name"),
+            Some(thread_name) => {
+                println!("start notify? Thread name: {}", thread_name)
+            },
+        }
         self.inner.assert_active();
         let (p, f) = utils::promise();
         let amp = Arc::new(Mutex::new(p));
@@ -862,6 +872,15 @@ impl KompactSystem {
     where
         P: Port + 'static,
     {
+        println!("THREAD ID triggeri: {:?}", std::thread::current().id());
+
+        match std::thread::current().name() {
+            None => println!("trigger no thread name"),
+            Some(thread_name) => {
+                println!("trigger Thread name: {}", thread_name)
+            },
+        }
+
         self.inner.assert_active();
         port.enqueue(event);
     }
@@ -874,6 +893,7 @@ impl KompactSystem {
     where
         P: Port + 'static,
     {
+        
         self.inner.assert_active();
         port.enqueue(msg);
     }
@@ -934,7 +954,9 @@ impl KompactSystem {
     /// ```
     pub fn shutdown(self) -> Result<(), String> {
         self.inner.assert_active();
+        println!("Through assert");
         self.inner.shutdown(&self)?;
+        println!("Through inner.shutdown");
         self.scheduler.shutdown()?;
         Ok(())
     }
@@ -947,7 +969,9 @@ impl KompactSystem {
     /// Remote systems will perceive this system as crashed.
     pub fn kill_system(self) -> Result<(), String> {
         self.inner.assert_active();
+        println!("before inner kill kill system");
         self.inner.kill(&self)?;
+        println!("before shutdown kill system");
         self.scheduler.shutdown()?;
         Ok(())
     }
@@ -988,9 +1012,12 @@ impl KompactSystem {
     /// ```
     pub fn shutdown_async(&self) -> () {
         let sys = self.clone();
-        std::thread::spawn(move || {
-            sys.shutdown().expect("shutdown");
-        });
+        println!("MAKING THREAD:shutdown_async");
+        std::thread::Builder::new()
+            .name("shutdown thread".to_string())
+            .spawn(move || {
+                sys.shutdown().expect("shutdown")
+            });
     }
 
     /// Return the system path of this Kompact system
@@ -1653,9 +1680,12 @@ impl InternalComponents {
 
     fn stop(&self, system: &KompactSystem) -> () {
         let (p, f) = utils::promise();
+        println!("before supervision port");
         self.supervision_port
             .enqueue(SupervisorMsg::Shutdown(Arc::new(Mutex::new(p))));
+        println!("before fwait");
         f.wait();
+        println!("after fwait");
         self.system_components.stop(system);
     }
 
@@ -1838,6 +1868,7 @@ impl KompactRuntime {
             }
             None => panic!("KompactRuntime was not initialised at shutdown!"),
         }
+        println!("Before res in shutdown");
         let res = self.timer.shutdown();
         lifecycle::set_destroyed(self.state());
         res
@@ -1846,11 +1877,14 @@ impl KompactRuntime {
     fn kill(&self, system: &KompactSystem) -> Result<(), String> {
         match *self.internal_components {
             Some(ref ic) => {
+            println!("kill killing internal components");
                 ic.kill(system);
             }
             None => panic!("KompactRuntime was not initialised at shutdown!"),
         }
+        println!("kill before shutdown");
         let res = self.timer.shutdown();
+        println!("kill before destroyed");
         lifecycle::set_destroyed(self.state());
         res
     }

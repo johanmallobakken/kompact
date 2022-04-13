@@ -278,7 +278,8 @@ pub struct SimulationNetworkDispatcher {
     /// Stores the number of retry-attempts for connections. Checked and incremented periodically by the reaper.
     retry_map: FxHashMap<SocketAddr, u8>,
     garbage_buffers: VecDeque<BufferChunk>,
-    network: Arc<Mutex<SimulationNetwork>>
+    network: Arc<Mutex<SimulationNetwork>>,
+    address: SocketAddr
 }
 
 impl Actor for SimulationNetworkDispatcher{
@@ -326,16 +327,12 @@ impl Dispatcher for SimulationNetworkDispatcher {
     ///
     /// This is only possible after the socket is bound and will panic if attempted earlier!
     fn system_path(&mut self) -> SystemPath {
+        println!("SYSTEM PATH CALL");
         match self.system_path {
             Some(ref path) => path.clone(),
             None => {
-                let bound_addr = match self.net_bridge {
-                    Some(ref net_bridge) => net_bridge.local_addr().expect("If net bridge is ready, port should be as well!"),
-                    None => panic!("You must wait until the socket is bound before attempting to create a system path!"),
-                };
-                println!("SYSPATH {} {} {}", self.cfg.transport, bound_addr.ip(), bound_addr.port());
+                let bound_addr = self.address;
                 let sp = SystemPath::new(self.cfg.transport, bound_addr.ip(), bound_addr.port());
-                println!("SYSTEMPATH IS BEING SET SIM");
                 self.system_path = Some(sp.clone());
                 sp
             }
@@ -385,6 +382,15 @@ impl SimulationNetworkDispatcher {
         let lookup = Arc::new(ArcSwap::from_pointee(ActorStore::new()));
         // Just a temporary assignment...will be replaced from config on start
         let reaper = lookup::gc::ActorRefReaper::default();
+        
+        let mut address = cfg.addr.clone();
+        {
+            let mut net = network.lock().unwrap();
+            address.set_port(net.get_port());
+            net.register_system(address, lookup.clone());
+        }
+
+        //println!("THIS IS PORT: {}", s_addr.port());
 
         SimulationNetworkDispatcher {
             ctx: ComponentContext::uninitialised(),
@@ -398,7 +404,8 @@ impl SimulationNetworkDispatcher {
             notify_ready: Some(notify_ready),
             garbage_buffers: VecDeque::new(),
             retry_map: Default::default(),
-            network
+            network,
+            address
         }
     }
 
@@ -477,17 +484,18 @@ impl SimulationNetworkDispatcher {
             .expect("Self can hardly be deallocated!");
         let bridge_logger = self.ctx.log().new(o!("owner" => "Bridge"));
         let network_thread_logger = self.ctx.log().new(o!("owner" => "NetworkThread"));
-        let (mut bridge, _addr) = SimulationBridge::new(
+        let (mut simulation_bridge, _addr) = SimulationBridge::new(
             self.lookup.clone(),
             network_thread_logger,
             bridge_logger,
-            address,
-            dispatcher.clone(),
+            self.address,
             &self.cfg,
-            self.network.clone()
+            self.network.clone(),
+            self.cfg.transport
         );
-        bridge.set_dispatcher(dispatcher);
-        self.net_bridge = Some(bridge);
+
+        //simulation_bridge.set_dispatcher(dispatcher);
+        self.net_bridge = Some(simulation_bridge);
     }
 
 
@@ -495,6 +503,7 @@ impl SimulationNetworkDispatcher {
     ///
     /// Mutable, since it will update the cached value, if necessary.
     pub fn system_path_ref(&mut self) -> &SystemPath {
+        println!("system_path_ref");
         match self.system_path {
             Some(ref path) => path,
             None => {
@@ -512,7 +521,10 @@ impl SimulationNetworkDispatcher {
 
     fn route(&mut self, dst: ActorPath, msg: DispatchData) -> Result<(), NetworkBridgeErr> {
         if self.system_path_ref() == dst.system() {
-            //println!("Routing to same system!");
+            println!("Routing to same system!");
+            let src = self.system_path_ref();
+            let dstgg = dst.system();
+            println!("Hello spr: {} port {} . dst.system: {} port {}!", src, src.port(), dstgg, dstgg.port());
             self.route_local(dst, msg);
             Ok(())
         } else {
@@ -524,12 +536,12 @@ impl SimulationNetworkDispatcher {
                     Ok(())
                 }
                 Transport::Tcp => {
-                    //println!("Routing tcp!");
+                    println!("Routing tcp!");
                     let addr = SocketAddr::new(*dst.address(), dst.port());
                     self.route_remote_tcp(addr, msg)
                 }
                 Transport::Udp => {
-                    //println!("Routing udp!");
+                    println!("Routing udp!");
                     let addr = SocketAddr::new(*dst.address(), dst.port());
                     self.route_remote_udp(addr, msg)
                 }
@@ -578,7 +590,7 @@ impl SimulationNetworkDispatcher {
         addr: SocketAddr,
         data: DispatchData,
     ) -> Result<(), NetworkBridgeErr> {
-        //println!("ROUTE REMOTE UDP");
+        println!("ROUTE REMOTE UDP");
         if let Some(bridge) = &self.net_bridge {
             bridge.route(addr, data, net::Protocol::Udp)?;
         } else {
@@ -680,6 +692,7 @@ impl SimulationNetworkDispatcher {
         update: bool,
         promise: RegistrationPromise,
     ) {
+        println!("REGISTER ACTOR");
         let ActorRegistration { actor, path } = registration;
         let res = self
             .resolve_path(&path)
@@ -730,6 +743,7 @@ impl SimulationNetworkDispatcher {
         update: bool,
         promise: RegistrationPromise,
     ) {
+        println!("REGISTER POLICY");
         let PolicyRegistration { policy, path } = registration;
         let lease = self.lookup.load();
         let path_res = PathResolvable::Segments(path);
@@ -776,6 +790,7 @@ impl SimulationNetworkDispatcher {
     }
 
     fn resolve_path(&mut self, resolvable: &PathResolvable) -> Result<ActorPath, PathParseError> {
+        println!("resolve_path");
         match resolvable {
             PathResolvable::Path(actor_path) => Ok(actor_path.clone()),
             PathResolvable::Alias(alias) => self
@@ -792,6 +807,7 @@ impl SimulationNetworkDispatcher {
     }
 
     fn deadletter_path(&mut self) -> ActorPath {
+        println!("deadlett");
         ActorPath::Named(NamedPath::with_system(self.system_path(), Vec::new()))
     }
 

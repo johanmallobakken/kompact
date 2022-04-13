@@ -282,6 +282,16 @@ impl<CD: ComponentTraits> Component<CD> {
                             let res = guard.definition.on_start();
                             //println!("after on_start");
                             count += 1;
+
+                            println!("THREAD ID innerexecute: {:?}", std::thread::current().id());
+
+                            match std::thread::current().name() {
+                                None => println!("inner execute no thread name"),
+                                Some(thread_name) => {
+                                    println!("inner execute Thread name: {}", thread_name)
+                                },
+                            }
+
                             // inform supervisor after local handling to make sure crashing component don't count as started
                             if let Some(ref supervisor) = self.supervisor {
                                 //println!("begin if on Start");
@@ -388,6 +398,7 @@ impl<CD: ComponentTraits> Component<CD> {
                 if rem_events > 0 {
                     let skip = guard.skip;
                     let res = guard.definition.execute(rem_events, skip);
+                    println!("last?");
                     guard.skip = res.skip;
                     count += res.count;
                     if res.blocking {
@@ -521,6 +532,8 @@ impl<CD: ComponentTraits> CoreContainer for Component<CD> {
         //println!("Before inner execute");
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| self.inner_execute()));
         //println!("After inner execute");
+        println!("THREAD ID push: {:?}", std::thread::current().id());
+
         match res {
             Ok(decision) => decision, // great
             Err(e) => {
@@ -545,6 +558,15 @@ impl<CD: ComponentTraits> CoreContainer for Component<CD> {
                         // (it's anyway only going to be called once)
                         std::mem::swap(guard.deref_mut(), &mut recovery_function);
                         let handler = recovery_function(context);
+                        
+                        println!("THREAD ID execute: {:?}", std::thread::current().id());
+
+                        match std::thread::current().name() {
+                            None => println!("execute no thread name"),
+                            Some(thread_name) => {
+                                println!("execute Thread name: {}", thread_name)
+                            },
+                        }
                         supervisor.enqueue(SupervisorMsg::Faulty(handler));
                     } else {
                         error!(
@@ -568,10 +590,13 @@ impl<CD: ComponentTraits> CoreContainer for Component<CD> {
 
     fn schedule(&self) -> () {
         match self.custom_scheduler {
-            Some(ref scheduler) => scheduler.schedule_custom(),
+            Some(ref scheduler) => {
+                println!("schedukler");
+                scheduler.schedule_custom()
+            },
             None => {
                 let core = self.core();
-                //println!("ACTUAL COMP");
+                println!("ACTUAL COMP: None");
                 core.system().schedule(core.component())
             }
         }

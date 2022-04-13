@@ -64,6 +64,7 @@ pub fn latch_synchronoise(b: &mut Bencher) {
             .collect();
         let mut outer_latches_thread = outer_latches.clone();
         let mut inner_latches_thread = inner_latches.clone();
+        println!("MAKING THREAD: latch_synchronoise");
         std::thread::spawn(move || {
             loop {
                 if let Some(wait_latch) = outer_latches_thread.pop() {

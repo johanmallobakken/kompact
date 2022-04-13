@@ -55,6 +55,13 @@ use backtrace::Backtrace;
 
 type SimulationNetHashMap<K, V> = FxHashMap<K, V>;
 
+#[derive(Clone, Copy)]
+pub enum SimulatedScheduling{
+    Future, 
+    Now, 
+    Queue
+}
+
 #[derive(Clone)]
 struct SimulationScheduler(Rc<RefCell<SimulationSchedulerData>>);
 
@@ -62,28 +69,72 @@ unsafe impl Sync for SimulationScheduler {}
 unsafe impl Send for SimulationScheduler {}
 
 pub struct SimulationSchedulerData {
-    setup: bool,
+    scheduling: SimulatedScheduling,
     queue: VecDeque<Arc<dyn CoreContainer>>,
-} 
+}
 
 impl SimulationSchedulerData {
     pub fn new() -> SimulationSchedulerData {
         SimulationSchedulerData {
-            setup: true, 
+            scheduling: SimulatedScheduling::Now, 
             queue: VecDeque::new(),
         }
     }
 }
 
+fn maybe_reschedule(c: Arc<dyn CoreContainer>) {
+    match c.execute() {
+        SchedulingDecision::Schedule => {
+            if cfg!(feature = "use_local_executor") {
+                println!("local?");
+                let res = try_execute_locally(move || maybe_reschedule(c));
+                assert!(!res.is_err(), "Only run with Executors that can support local execute or remove the avoid_executor_lookups feature!");
+            } else {
+                println!("nonlocal?");
+                let c2 = c.clone();
+                c.system().schedule(c2);
+            }
+        }
+        SchedulingDecision::Resume => {
+            println!("Resume");
+            maybe_reschedule(c)
+        },
+        _ => {
+            println!("Notn");
+            ()
+        },
+    }
+}
+
 impl Scheduler for SimulationScheduler {
     fn schedule(&self, c: Arc<dyn CoreContainer>) -> () {
+        println!("schedule: {:?}", std::thread::current().id());
 
-        //println!("Component Definition Type Name: {}", c.type_name());
+        match current().name() {
+            None => println!("SCHEDULE thread name"),
+            Some(thread_name) => {
+                println!("SCHEDULE Thread name: {}", thread_name)
+            },
+        }
 
-        if self.0.as_ref().borrow().setup {
-            c.execute();
-        } else {
-            self.0.as_ref().borrow_mut().queue.push_back(c);
+        println!("schedule: {} name: {}", c.id(), c.type_name());
+
+        match self.get_scheduling() {
+            SimulatedScheduling::Future => {
+                println!("FUTURE");
+                maybe_reschedule(c);
+                println!("AFTER FUTURE");
+            },
+            SimulatedScheduling::Now => {
+                println!("NOW");
+                c.execute();
+                println!("AFTER NOW");
+            },
+            SimulatedScheduling::Queue => {
+                println!("QUEUE");
+                self.push_back_to_queue(c);
+                println!("AFTER QUEUE");
+            },
         }
     }
 
@@ -110,6 +161,16 @@ impl Scheduler for SimulationScheduler {
     fn spawn(&self, future: futures::future::BoxFuture<'static, ()>) -> (){
         println!("TODO spawn");
         todo!();
+    }
+}
+
+impl SimulationScheduler {
+    fn get_scheduling(&self) -> SimulatedScheduling{
+        self.0.as_ref().borrow().scheduling
+    }
+
+    fn push_back_to_queue(&self, c: Arc<dyn CoreContainer>){
+        self.0.as_ref().borrow_mut().queue.push_back(c);
     }
 }
 
@@ -143,86 +204,6 @@ impl TimerComponent for SimulationTimer{
     }
 }
 
-/* impl SimulationTimer {
-    pub(crate) fn new_timer_component() -> Box<dyn TimerComponent> {
-        let t = SimulationTimer(Rc::new(RefCell::new(SimulationTimerData::new())));
-        Box::new(t) as Box<dyn TimerComponent>
-    }
-}*/
-/* 
-#[derive(ComponentDefinition)]
-pub struct SimulationNetworkDispatcher {
-    ctx: ComponentContext<SimulationNetworkDispatcher>,
-    /// Local map of connection statuses
-    connections: SimulationNetHashMap<SocketAddr, ConnectionState>,
-    /// Network configuration for this dispatcher
-    cfg: NetworkConfig,
-    /// Shared lookup structure for mapping [actor paths](ActorPath) and [actor refs](ActorRef)
-    lookup: Arc<ArcSwap<ActorStore>>,
-    // Fields initialized at [Start](ControlEvent::Start) – they require ComponentContextual awareness
-    /// Bridge into asynchronous networking layer
-    net_bridge: Option<net::Bridge>,
-    /// A cached version of the bound system path
-    system_path: Option<SystemPath>,
-    /// Management for queuing Frames during network unavailability (conn. init. and MPSC unreadiness)
-    queue_manager: QueueManager,
-    /// Reaper which cleans up deregistered actor references in the actor lookup table
-    reaper: lookup::gc::ActorRefReaper,
-    notify_ready: Option<KPromise<()>>,
-    /// Stores the number of retry-attempts for connections. Checked and incremented periodically by the reaper.
-    retry_map: FxHashMap<SocketAddr, u8>,
-    garbage_buffers: VecDeque<BufferChunk>,
-    /// The dispatcher emits NetworkStatusUpdates to the `NetworkStatusPort`.
-    network_status_port: ProvidedPort<NetworkStatusPort>,
-}
-
-impl NetworkActor for SimulationNetworkDispatcher{
-    type Message = DispatchEnvelope;
-
-    type Deserialiser = Serde;
-
-    fn receive(&mut self, sender: Option<ActorPath>, msg: Self::Message) -> Handled {
-        todo!()
-    }
-
-    fn on_error(&mut self, error: prelude::UnpackError<prelude::NetMessage>) -> Handled {
-        warn!(
-            "{} {} {} {}", self.log(),
-            "Could not deserialise a message with Deserialiser with id={}. Error was: {:?}",
-            Self::Deserialiser::SER_ID,
-            error
-        );
-        Handled::Ok
-    }
-}
-
-impl ComponentLifecycle for SimulationNetworkDispatcher {
-    fn on_start(&mut self) -> Handled
-    where
-        Self: 'static,
-    {
-        debug!("{} {}", self.log(), "Starting...");
-        Handled::Ok
-    }
-
-    fn on_stop(&mut self) -> Handled
-    where
-        Self: 'static,
-    {
-        debug!("{} {}", self.log(), "Stopping...");
-        Handled::Ok
-    }
-
-    fn on_kill(&mut self) -> Handled
-    where
-        Self: 'static,
-    {
-        debug!("{} {}", self.log(), "Killing...");
-        Handled::Ok
-    }
-}*/
-
-
 pub struct SimulationScenario {
     systems: Vec<KompactSystem>,
     scheduler: SimulationScheduler,
@@ -243,7 +224,7 @@ impl SimulationScenario {
 
     pub fn spawn_system(&mut self, cfg: KompactConfig) -> KompactSystem {
         let mut mut_cfg = cfg;
-        KompactConfig::set_config_value(&mut mut_cfg, &config_keys::system::THREADS, 1);
+        KompactConfig::set_config_value(&mut mut_cfg, &config_keys::system::THREADS, 1usize);
         let scheduler = self.scheduler.clone();
         mut_cfg.scheduler(move |_| Box::new(scheduler.clone()));
         let timer = self.timer.clone();
@@ -255,13 +236,28 @@ impl SimulationScenario {
     }
 
     pub fn end_setup(&mut self) -> () {
-        let mut data_ref = self.scheduler.0.as_ref().borrow_mut();
-        data_ref.setup = false;
+        self.scheduler.0.as_ref().borrow_mut().scheduling = SimulatedScheduling::Queue;
+    }
+    
+    pub fn break_link(&mut self, sys1: KompactSystem, sys2: KompactSystem) -> () {
+        println!("BREAK LINK IN SIMULATOR");
+        self.network.lock().unwrap().break_link(sys1.system_path(), sys2.system_path());
+    }
+
+    pub fn shutdown_system(&self, sys: KompactSystem) -> (){
+        println!("Shutting down system?");
+        //self.set_scheduling_choice(SimulatedScheduling::Future);
+        //sys.kill_system()
+        //sys.shutdown().expect("shutdown");
+        //self.set_scheduling_choice(SimulatedScheduling::Queue);
+    }
+
+    pub fn set_scheduling_choice(&self, choice: SimulatedScheduling) {
+        self.scheduler.0.as_ref().borrow_mut().scheduling = choice;
     }
 
     fn get_work(&mut self) -> Option<Arc<dyn CoreContainer>> {
-        let mut data_ref = self.scheduler.0.as_ref().borrow_mut();
-        data_ref.queue.pop_front()
+        self.scheduler.0.as_ref().borrow_mut().queue.pop_front()
     }
 
     pub fn create_and_register<C, F>(
@@ -284,13 +280,21 @@ impl SimulationScenario {
         self.network.clone()
     }
 
-    pub fn simulate_step(&mut self) -> SchedulingDecision {
+    pub fn simulate_step(&mut self) -> () {
         match self.get_work(){
             Some(w) => {
                 //println!("EXECUTING SOMETHING!!!!!!!!!!!!!!!!");
-                w.execute()
+                let res = w.execute();
+                println!("helo");
+                match res {
+                    SchedulingDecision::Schedule => self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
+                    SchedulingDecision::AlreadyScheduled => todo!(),
+                    SchedulingDecision::NoWork => (),
+                    SchedulingDecision::Blocked => todo!(),
+                    SchedulingDecision::Resume => todo!(),
+                }
             },
-            None => SchedulingDecision::NoWork
+            None => ()
         }
     }
 

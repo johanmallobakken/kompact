@@ -258,6 +258,7 @@ pub mod prelude {
         Never,
         simulator::{
             SimulationScenario,
+            SimulatedScheduling,
             simulation_network_dispatcher::{
                 SimulationNetworkConfig,
                 SimulationNetworkDispatcher

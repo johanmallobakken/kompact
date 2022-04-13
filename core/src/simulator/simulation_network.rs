@@ -4,8 +4,8 @@ use iprange::{IpRange, ToNetwork};
 use log::{warn, error};
 use rustc_hash::FxHashSet;
 
-use crate::{prelude::{KompactSystem, NetMessage}, net::events::DispatchEvent, messaging::DispatchData, lookup::{ActorStore, ActorLookup, LookupResult}, KompactLogger};
-use std::{collections::HashMap, net::IpAddr, sync::Arc};
+use crate::{prelude::{KompactSystem, NetMessage}, net::events::DispatchEvent, messaging::DispatchData, lookup::{ActorStore, ActorLookup, LookupResult}, KompactLogger, actors::SystemPath};
+use std::{collections::{HashMap, HashSet}, net::IpAddr, sync::Arc};
 pub use std::net::SocketAddr;
 
 use super::simulation_bridge::SimulationBridge;
@@ -13,8 +13,10 @@ use super::simulation_bridge::SimulationBridge;
 
 pub struct SimulationNetwork {
     socket_lookup_map: HashMap<SocketAddr, Arc<ArcSwap<ActorStore>>>,
+    socket_system_map: HashMap<SocketAddr, SystemPath>,
     log: Option<KompactLogger>,
-    port_counter: u16
+    port_counter: u16,
+    broken_links: HashSet<(SystemPath, SystemPath)>
 }
 
 unsafe impl Send for SimulationNetwork {}
@@ -22,10 +24,12 @@ unsafe impl Sync for SimulationNetwork {}
 
 impl SimulationNetwork{
     pub fn new() -> Self {
-        SimulationNetwork{
+        SimulationNetwork {
             socket_lookup_map: HashMap::new(),
+            socket_system_map: HashMap::new(),
             log: None,
-            port_counter: 0
+            port_counter: 0,
+            broken_links: HashSet::new()
         }
     }
 
@@ -37,22 +41,51 @@ impl SimulationNetwork{
         self.socket_lookup_map.insert(addr, actor_store);
     }
 
+    pub fn register_system_path(&mut self, addr: SocketAddr, syspath: SystemPath) {
+        self.socket_system_map.insert(addr, syspath);
+    }
+
     pub fn get_port(&mut self) -> u16{
         self.port_counter += 1;
+
+        println!("GIVING PORT: {}", self.port_counter);
+
         self.port_counter
     }
 
-    pub fn send(&mut self, event: DispatchEvent) -> () {
-        self.handle_dispatch_event(event);
+    pub fn send(&mut self, src: SystemPath, event: DispatchEvent) -> () {
+        self.handle_dispatch_event(src, event);
     }
 
-    fn handle_dispatch_event(&mut self, event: DispatchEvent) {
+    fn handle_dispatch_event(&mut self, src_syspath: SystemPath,  event: DispatchEvent) {
         match event {
             DispatchEvent::SendTcp(address, data) => {
-                self.send_tcp_message(address, data);
+                match self.socket_system_map.get(&address).take() {
+                    Some(dst_syspath) => {
+                        if self.broken_links.contains(&(src_syspath, dst_syspath.clone())){
+                            println!("Link is broken!");
+                        } else {
+                            self.send_tcp_message(address, data);
+                        }
+                    },
+                    None => self.send_tcp_message(address, data),
+                }
             }
             DispatchEvent::SendUdp(address, data) => {
-                self.send_udp_message(address, data);
+                println!("SENDING UDPPPPPPPPPPP");
+                println!("Size socket_system_map len: {}", self.socket_system_map.len());
+                match self.socket_system_map.get(&address).take() {
+                    Some(dst_syspath) => {
+                        let boold = self.broken_links.contains(&(src_syspath, dst_syspath.clone()));
+                        println!("Size broken links : {} contains: {}", self.broken_links.len(), boold);
+                        if boold {
+                            println!("Link is broken!");
+                        } else {
+                            self.send_udp_message(address, data);
+                        }
+                    },
+                    None => self.send_udp_message(address, data),
+                }
             }
             DispatchEvent::Stop => {
                 self.stop();
@@ -97,11 +130,8 @@ impl SimulationNetwork{
     }
 
     fn send_udp_message(&mut self, address: SocketAddr, data: DispatchData){
-
         let local_msg = data.into_local();
-
         let lookup = self.socket_lookup_map.get(&address);
-
         match local_msg {
             Ok(envelope) => {
                 match lookup {
@@ -123,6 +153,7 @@ impl SimulationNetwork{
                                     "Could not find actor reference for destination: {:?}, dropping message",
                                     envelope.receiver
                                 );*/
+
                             }
                             LookupResult::Err(e) => {
                                 /* error!(
@@ -185,6 +216,10 @@ impl SimulationNetwork{
 
     fn allow_ip_net(&mut self, net: IpNet) {
         todo!();
+    }
+
+    pub fn break_link(&mut self, sys1: SystemPath, sys2: SystemPath){
+        self.broken_links.insert((sys1, sys2));
     }
 }
 

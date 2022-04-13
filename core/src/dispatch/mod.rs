@@ -1082,9 +1082,9 @@ impl Dispatcher for NetworkDispatcher {
 
 impl ComponentLifecycle for NetworkDispatcher {
     fn on_start(&mut self) -> Handled {
-        info!(self.ctx.log(), "Starting network...");
+        //info!(self.ctx.log(), "Starting network...");
         self.start();
-        info!(self.ctx.log(), "Started network just fine.");
+        //info!(self.ctx.log(), "Started network just fine.");
         if let Some(promise) = self.notify_ready.take() {
             promise
                 .complete()

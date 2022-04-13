@@ -403,6 +403,7 @@ fn run_network_thread(
     started_promise: KPromise<()>,
     dispatcher_ref: DispatcherRef,
 ) -> async_std::io::Result<()> {
+    println!("MAKING THREAD:run_network_thread");
     thread::Builder::new()
         .name("network_thread".to_string())
         .spawn(move || {
