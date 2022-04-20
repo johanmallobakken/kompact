@@ -221,6 +221,10 @@ impl SimulationNetwork{
     pub fn break_link(&mut self, sys1: SystemPath, sys2: SystemPath){
         self.broken_links.insert((sys1, sys2));
     }
+
+    pub fn restore_link(&mut self, sys1: SystemPath, sys2: SystemPath){
+        self.broken_links.remove(&(sys1, sys2));
+    }
 }
 
 #[derive(Default)]

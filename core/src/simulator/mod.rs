@@ -240,8 +240,11 @@ impl SimulationScenario {
     }
     
     pub fn break_link(&mut self, sys1: KompactSystem, sys2: KompactSystem) -> () {
-        println!("BREAK LINK IN SIMULATOR");
         self.network.lock().unwrap().break_link(sys1.system_path(), sys2.system_path());
+    }
+
+    pub fn restore_link(&mut self, sys1: KompactSystem, sys2: KompactSystem) -> () {
+        self.network.lock().unwrap().restore_link(sys1.system_path(), sys2.system_path());
     }
 
     pub fn shutdown_system(&self, sys: KompactSystem) -> (){

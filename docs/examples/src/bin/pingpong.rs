@@ -163,6 +163,9 @@ pub fn sim() {
     println!("start in main 15 {:?}", simulation.simulate_step());
     println!("start in main 16 {:?}", simulation.simulate_step());
     println!("start in main 17 {:?}", simulation.simulate_step());
+
+    simulation.restore_link(sys1.clone(), sys2.clone());
+
     println!("start in main 18 {:?}", simulation.simulate_step());
     println!("start in main 19 {:?}", simulation.simulate_step());
     println!("start in main 20 {:?}", simulation.simulate_step());
@@ -170,6 +173,14 @@ pub fn sim() {
     println!("start in main 22 {:?}", simulation.simulate_step());
     println!("start in main 23 {:?}", simulation.simulate_step());
     println!("start in main 24 {:?}", simulation.simulate_step());
+    println!("start in main 25 {:?}", simulation.simulate_step());
+    println!("start in main 26 {:?}", simulation.simulate_step());
+    println!("start in main 27 {:?}", simulation.simulate_step());
+    println!("start in main 28 {:?}", simulation.simulate_step());
+    println!("start in main 29 {:?}", simulation.simulate_step());
+    println!("start in main 30 {:?}", simulation.simulate_step());
+    println!("start in main 31 {:?}", simulation.simulate_step());
+    println!("start in main 32 {:?}", simulation.simulate_step());
 
     println!("done simulation steps");
 
