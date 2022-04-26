@@ -138,6 +138,7 @@ impl SimulationNetwork {
     }
 
     pub fn clog_link(&mut self, src: SocketAddr, dst: SocketAddr) {
+        println!("addr1: {} addr2: {}", src.to_string(), dst.to_string());
         assert!(self.endpoints.contains_key(&src));
         assert!(self.endpoints.contains_key(&dst));
         debug!("clog: {} -> {}", src, dst);
@@ -153,6 +154,8 @@ impl SimulationNetwork {
 
     pub fn send(&mut self, src: SocketAddr, dst: SocketAddr, data: DispatchData) { // tag: u64, data: Payload
         //trace!("send: {} -> {}, tag={}", src, dst, tag);
+        println!("senddd addr1: {} addr2: {}", src.to_string(), dst.to_string());
+        println!("contains clogged link?: {} ", self.clogged_link.contains(&(src, dst)));
         assert!(self.endpoints.contains_key(&src));
         if !self.endpoints.contains_key(&dst)
             || self.clogged.contains(&src)

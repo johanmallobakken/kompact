@@ -517,7 +517,7 @@ impl SimulationNetworkDispatcher {
         dst_addr: SocketAddr,
         data: DispatchData,
     ) -> Result<(), NetworkBridgeErr> {
-        self.network.lock().unwrap().send(self.address, dst_addr, data);
+        self.network.lock().unwrap().send(self.system_path.socket_address(), dst_addr, data);
         Ok(())
     }
 
@@ -526,7 +526,7 @@ impl SimulationNetworkDispatcher {
         dst_addr: SocketAddr,
         data: DispatchData,
     ) -> Result<(), NetworkBridgeErr> {
-        self.network.lock().unwrap().send(self.address, dst_addr, data);
+        self.network.lock().unwrap().send(self.system_path.socket_address(), dst_addr, data);
         Ok(())
     }
 
