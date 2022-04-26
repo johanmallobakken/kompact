@@ -164,7 +164,7 @@ pub fn sim() {
     println!("start in main 16 {:?}", simulation.simulate_step());
     println!("start in main 17 {:?}", simulation.simulate_step());
 
-    simulation.restore_link(sys1.clone(), sys2.clone());
+    //simulation.restore_link(sys1.clone(), sys2.clone());
 
     println!("start in main 18 {:?}", simulation.simulate_step());
     println!("start in main 19 {:?}", simulation.simulate_step());

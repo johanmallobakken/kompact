@@ -1891,6 +1891,7 @@ impl KompactRuntime {
 
     pub(crate) fn poison(&self) {
         lifecycle::set_faulty(self.state());
+        println!("poisoned???");
         let _ = self.timer.shutdown();
     }
 

@@ -68,6 +68,7 @@ impl ActorRefReaper {
     }
 
     pub fn from_config(conf: &hocon::Hocon) -> Self {
+        println!("hello from conf");
         // TODO(Adam): Make all parameters configurable
         let algorithm = match conf[config_keys::ALGORITHM].as_string().as_deref() {
             Some("AIMD") => FeedbackAlgorithm::Aimd,
@@ -79,6 +80,7 @@ impl ActorRefReaper {
             ),
             None => defaults::ALGORITHM,
         };
+        println!("end conf");
         Self::new(
             defaults::INITIAL_INTERVAL_MS,
             defaults::MIN_INTERVAL_MS,

@@ -5,11 +5,11 @@ use self::{simulation_network::SimulationNetwork, simulation_network_dispatcher:
 use super::*;
 use arc_swap::ArcSwap;
 use executors::*;
+use hierarchical_hash_wheel_timer::Timer;
 use messaging::{DispatchEnvelope, RegistrationResult};
 use prelude::{NetworkConfig, NetworkStatusPort};
 use rustc_hash::FxHashMap;
 pub mod simulation_network_dispatcher;
-pub mod simulation_bridge;
 pub mod simulation_network;
 use crate::{
     runtime::*,
@@ -127,6 +127,7 @@ impl Scheduler for SimulationScheduler {
             },
             SimulatedScheduling::Now => {
                 println!("NOW");
+                println!("cid {}", c.id());
                 c.execute();
                 println!("AFTER NOW");
             },
@@ -155,7 +156,6 @@ impl Scheduler for SimulationScheduler {
 
     fn poison(&self) -> (){
         println!("TODO poison");
-        todo!();
     }
 
     fn spawn(&self, future: futures::future::BoxFuture<'static, ()>) -> (){
@@ -200,7 +200,8 @@ impl TimerRefFactory for SimulationTimer {
 
 impl TimerComponent for SimulationTimer{
     fn shutdown(&self) -> Result<(), String> {
-        todo!();
+        println!("Shutdown timer");
+        Ok(())
     }
 }
 
@@ -240,11 +241,11 @@ impl SimulationScenario {
     }
     
     pub fn break_link(&mut self, sys1: KompactSystem, sys2: KompactSystem) -> () {
-        self.network.lock().unwrap().break_link(sys1.system_path(), sys2.system_path());
+        self.network.lock().unwrap().clog_link(sys1.system_path().socket_address(), sys2.system_path().socket_address());
     }
 
     pub fn restore_link(&mut self, sys1: KompactSystem, sys2: KompactSystem) -> () {
-        self.network.lock().unwrap().restore_link(sys1.system_path(), sys2.system_path());
+        self.network.lock().unwrap().unclog_link(sys1.system_path().socket_address(), sys2.system_path().socket_address());
     }
 
     pub fn shutdown_system(&self, sys: KompactSystem) -> (){
