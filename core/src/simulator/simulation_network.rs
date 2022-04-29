@@ -18,9 +18,7 @@ use crate::{
 use crate::DynamicPortAccess;
 use crate::{timer::{TimerRef, timer_manager::TimerManager}, prelude::{ComponentDefinition}};
 
-/// A simulated network.
 pub struct SimulationNetwork {
-    //ctx: ComponentContext<SimulationNetwork>,
     rand: StdRng,
     config: Config,
     stat: Stat,
@@ -28,41 +26,7 @@ pub struct SimulationNetwork {
     clogged: HashSet<SocketAddr>,
     clogged_link: HashSet<(SocketAddr, SocketAddr)>,
 }
-/* 
-impl ComponentLifecycle for SimulationNetwork {
-    fn on_start(&mut self) -> Handled {
-        println!("On start Network");
-        Handled::Ok
-    }
 
-    fn on_stop(&mut self) -> Handled
-    where
-        Self: 'static,
-    {
-        Handled::Ok
-    }
-
-    fn on_kill(&mut self) -> Handled
-    where
-        Self: 'static,
-    {
-        Handled::Ok
-    }
-}
-
-impl Actor for SimulationNetwork {
-    type Message = Never;
-
-    fn receive_local(&mut self, msg: Self::Message) -> Handled {
-        unimplemented!("We are ignoring local messages");
-    }
-
-    fn receive_network(&mut self, msg: NetMessage) -> Handled {
-        unimplemented!("We are ignoring network messages");
-    }
-}*/
-
-/// Network configurations.
 #[derive(Debug)]
 #[allow(missing_docs)]
 pub struct Config {
@@ -79,10 +43,8 @@ impl Default for Config {
     }
 }
 
-/// Network statistics.
 #[derive(Debug, Default, Clone)]
 pub struct Stat {
-    /// Total number of messages.
     pub msg_count: u64,
     pub system_count: u16
 }
@@ -90,7 +52,6 @@ pub struct Stat {
 impl SimulationNetwork {
     pub fn new() -> Self {
         Self {
-            //ctx: ComponentContext::uninitialised(),
             rand: StdRng::seed_from_u64(0),
             config: Config::default(),
             stat: Stat::default(),
@@ -109,7 +70,6 @@ impl SimulationNetwork {
     }
 
     pub fn register_system(&mut self, mut addr: SocketAddr, lookup: Arc<ArcSwap<ActorStore>>, transport: Transport) -> SystemPath {
-        //debug!("insert: {}", target);
         addr.set_port(self.stat.system_count);
         self.stat.system_count += 1; 
 
@@ -152,8 +112,7 @@ impl SimulationNetwork {
         self.clogged_link.remove(&(src, dst));
     }
 
-    pub fn send(&mut self, src: SocketAddr, dst: SocketAddr, data: DispatchData) { // tag: u64, data: Payload
-        //trace!("send: {} -> {}, tag={}", src, dst, tag);
+    pub fn send(&mut self, src: SocketAddr, dst: SocketAddr, data: DispatchData) {
         println!("senddd addr1: {} addr2: {}", src.to_string(), dst.to_string());
         println!("contains clogged link?: {} ", self.clogged_link.contains(&(src, dst)));
         assert!(self.endpoints.contains_key(&src));
@@ -170,12 +129,6 @@ impl SimulationNetwork {
             return;
         }
         let lookup = self.endpoints[&dst].clone();
-
-        /*let msg = Message {
-            tag,
-            data,
-            from: src,
-        };*/
 
         let latency = self.rand.gen_range(self.config.send_latency.clone());
         trace!("delay: {:?}", latency);
@@ -207,63 +160,6 @@ impl SimulationNetwork {
             },
             Err(e) => todo!(),
         }
-        
-        /* .add_timer(self.time.now() + latency, move || {
-            ep.lock().unwrap().send(msg);
-        });*/
         self.stat.msg_count += 1;
-    }
-
-    pub fn recv(&mut self, dst: SocketAddr, tag: u64) -> oneshot::Receiver<Message> {
-        //self.endpoints[&dst].lock().unwrap().recv(tag)
-        todo!()
-    }
-}
-
-pub struct Message {
-    pub tag: u64,
-    pub data: Payload,
-    pub from: SocketAddr,
-}
-
-pub type Payload = Box<dyn Any + Send + Sync>;
-
-#[derive(Default)]
-struct Endpoint {
-    registered: Vec<(u64, oneshot::Sender<Message>)>,
-    msgs: Vec<Message>,
-}
-
-impl Endpoint {
-    fn send(&mut self, msg: Message) {
-        let mut i = 0;
-        let mut msg = Some(msg);
-        while i < self.registered.len() {
-            if matches!(&msg, Some(msg) if msg.tag == self.registered[i].0) {
-                // tag match, take and try send
-                let (_, sender) = self.registered.swap_remove(i);
-                msg = match sender.send(msg.take().unwrap()) {
-                    Ok(_) => return,
-                    Err(m) => Some(m),
-                };
-                // failed to send, try next
-            } else {
-                // tag mismatch, move to next
-                i += 1;
-            }
-        }
-        // failed to match awaiting recv, save
-        self.msgs.push(msg.unwrap());
-    }
-
-    fn recv(&mut self, tag: u64) -> oneshot::Receiver<Message> {
-        let (tx, rx) = oneshot::channel();
-        if let Some(idx) = self.msgs.iter().position(|msg| tag == msg.tag) {
-            let msg = self.msgs.swap_remove(idx);
-            tx.send(msg).ok().unwrap();
-        } else {
-            self.registered.push((tag, tx));
-        }
-        rx
     }
 }
