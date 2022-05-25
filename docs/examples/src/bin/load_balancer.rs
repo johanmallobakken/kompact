@@ -61,6 +61,7 @@ impl ComponentLifecycle for QueryServer {
 }
 impl Actor for QueryServer {
     type Message = Never;
+    type State = u64;
 
     fn receive_local(&mut self, _msg: Self::Message) -> Handled {
         unreachable!("Can't instantiate Never type");
@@ -163,6 +164,7 @@ impl ComponentLifecycle for Client {
 
 impl Actor for Client {
     type Message = Never;
+    type State = u64;
 
     fn receive_local(&mut self, _msg: Self::Message) -> Handled {
         unreachable!("Can't instantiate Never type");

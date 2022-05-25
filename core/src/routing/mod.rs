@@ -64,6 +64,7 @@ pub(crate) mod test_helpers {
     ignore_lifecycle!(ReceiverComponent);
     impl Actor for ReceiverComponent {
         type Message = Never;
+        type State = u64;
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             unreachable!("Can't instantiate Never type!");

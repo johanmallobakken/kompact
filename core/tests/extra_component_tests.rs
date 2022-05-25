@@ -59,6 +59,7 @@ impl SelfCaller {
 info_lifecycle!(SelfCaller);
 impl Actor for SelfCaller {
     type Message = SelfMessage;
+    type State = u64;
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         info!(self.log(), "Got {:?}", msg);

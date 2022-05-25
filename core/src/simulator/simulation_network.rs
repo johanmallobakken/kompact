@@ -18,6 +18,9 @@ use crate::{
 use crate::DynamicPortAccess;
 use crate::{timer::{TimerRef, timer_manager::TimerManager}, prelude::{ComponentDefinition}};
 
+use kompact_actor_derive::Actor;
+use crate::ActorRaw;
+
 pub struct SimulationNetwork {
     rand: StdRng,
     config: Config,

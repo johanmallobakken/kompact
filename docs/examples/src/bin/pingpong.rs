@@ -1,8 +1,10 @@
 use kompact::prelude::*;
 use kompact::{prelude::*, serde_serialisers::*};
 use serde::{Deserialize, Serialize};
-
-
+use std::borrow::BorrowMut;
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::Mutex;
 use std::{
     time::Duration,
     thread::{
@@ -19,7 +21,7 @@ struct Pinger {
 
 #[derive(ComponentDefinition)]
 struct Ponger {
-    ctx: ComponentContext<Self>,
+    lol: ComponentContext<Self>,
     counter: u64
 }
 
@@ -53,11 +55,13 @@ impl Pinger {
 impl Ponger {
     pub fn new() -> Self {
         Ponger {
-            ctx: ComponentContext::uninitialised(),
+            lol: ComponentContext::uninitialised(),
             counter: 0
         }
     }
 }
+
+
 
 impl ComponentLifecycle for Pinger {
     fn on_start(&mut self) -> Handled {
@@ -76,9 +80,21 @@ impl ComponentLifecycle for Ponger {
         Handled::Ok
     }
 }
+/* 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+struct PingPongState {
+    pinger_counter: u64,
+    ponger_counter: u64
+}*/
+
+enum GlobalState {
+    Pinger { count: i32},
+    Ponger { count: i32},
+}
 
 impl Actor for Pinger {
     type Message = Never;
+    type State = u64;
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         unimplemented!("We are ignoring local messages");
@@ -101,12 +117,14 @@ impl Actor for Pinger {
 
 impl Actor for Ponger {
     type Message = Never;
+    type State = u64;
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         unimplemented!("We are ignoring local messages");
     }
 
     fn receive_network(&mut self, msg: NetMessage) -> Handled {
+
         let sender = msg.sender;
         match msg.data.try_deserialise::<Ping, Serde>() {
             Ok(_ping) => {
@@ -118,6 +136,19 @@ impl Actor for Ponger {
             Err(e) => warn!(self.log(), "Invalid data: {:?}", e),
         }
         Handled::Ok
+    }
+}
+
+impl GetState<GlobalState> for Pinger {
+    fn get_state(&self) -> GlobalState {
+        todo!();
+    }
+}
+
+
+impl GetState<GlobalState> for Ponger {
+    fn get_state(&self) -> GlobalState {
+        todo!();
     }
 }
 

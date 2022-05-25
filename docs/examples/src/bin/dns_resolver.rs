@@ -57,6 +57,7 @@ impl ComponentLifecycle for DnsComponent {
 // ANCHOR: actor
 impl Actor for DnsComponent {
     type Message = Ask<DnsRequest, DnsResponse>;
+    type State = u64;
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         debug!(self.log(), "Got request for domain: {}", msg.request().0);

@@ -281,6 +281,7 @@ pub struct SimulationNetworkDispatcher {
 
 impl Actor for SimulationNetworkDispatcher{
     type Message = DispatchEnvelope;
+    type State = u64;
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         match msg {

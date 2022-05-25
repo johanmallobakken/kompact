@@ -59,6 +59,12 @@ pub struct Component<CD: ComponentTraits> {
     recovery_function: Mutex<Box<RecoveryFunction>>,
 }
 
+impl<T: StateBounds, CD: ComponentDefinition + GetState<T>> GetState<T> for Component<CD> {
+    fn get_state(&self) -> T {
+        self.on_definition(|x| x.get_state())
+    }
+}
+
 impl<CD: ComponentTraits> Component<CD> {
     pub(crate) fn new(
         system: KompactSystem,

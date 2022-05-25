@@ -1,6 +1,4 @@
-
-
-use self::{simulation_network::SimulationNetwork, simulation_network_dispatcher::{SimulationNetworkConfig, SimulationNetworkDispatcher}};
+use self::{simulation_network::SimulationNetwork, simulation_network_dispatcher::{SimulationNetworkConfig, SimulationNetworkDispatcher}, state::StateBounds};
 
 use super::*;
 use arc_swap::ArcSwap;
@@ -11,13 +9,25 @@ use prelude::{NetworkConfig, NetworkStatusPort};
 use rustc_hash::FxHashMap;
 pub mod simulation_network_dispatcher;
 pub mod simulation_network;
+pub mod state;
+
 use crate::{
     runtime::*,
     timer::{
         timer_manager::TimerRefFactory,
-
-    }, net::{ConnectionState, buffers::BufferChunk}, lookup::ActorStore, dispatch::queue_manager::QueueManager, serde_serialisers::Serde
+    }, 
+    net::{ConnectionState, buffers::BufferChunk}, 
+    lookup::ActorStore, 
+    dispatch::queue_manager::QueueManager, 
+    serde_serialisers::Serde,
 };
+
+pub use state::GetState;
+
+use state::Invariant;
+use state::ProgressCounter;
+use state::SimulationError;
+
 use std::{
     collections::{
         HashMap,
@@ -52,6 +62,8 @@ use std::io::{stdin,stdout,Write};
 use config_keys::*;
 
 use backtrace::Backtrace;
+
+use lazy_static::lazy_static;
 
 type SimulationNetHashMap<K, V> = FxHashMap<K, V>;
 
@@ -205,22 +217,39 @@ impl TimerComponent for SimulationTimer{
     }
 }
 
-pub struct SimulationScenario {
+/* 
+lazy_static! {
+    static ref GLOBAL_STATE: Option<GlobalState<T>>  = Mutex::new(0);
+}*/
+
+pub struct SimulationScenario<T>{
     systems: Vec<KompactSystem>,
     scheduler: SimulationScheduler,
     timer: SimulationTimer,
-    network: Arc<Mutex<SimulationNetwork>>
+    network: Arc<Mutex<SimulationNetwork>>,
+    monitored_invariants: Vec<Arc<dyn Invariant<T>>>,
+    monitored_actors: Vec<Arc<dyn GetState<T>>>
 }
 
-impl SimulationScenario {
-    pub fn new() -> SimulationScenario {
+impl<T: 'static> SimulationScenario<T>{
+    pub fn new() -> SimulationScenario<T>{
         SimulationScenario {
             systems: Vec::new(),
             scheduler: SimulationScheduler(Rc::new(RefCell::new(SimulationSchedulerData::new()))),
             timer: SimulationTimer(Rc::new(RefCell::new(SimulationTimerData::new()))),
             //network: Rc::new(RefCell::new(SimulationNetwork::new()))
-            network: Arc::new(Mutex::new(SimulationNetwork::new()))
+            network: Arc::new(Mutex::new(SimulationNetwork::new())),
+            monitored_actors: Vec::new(),
+            monitored_invariants: Vec::new(),
         }
+    }
+
+    fn check_invariance(&self) -> Result<(), SimulationError>{
+        for invariant in &self.monitored_invariants {
+            let t_vec: Vec<T> = self.monitored_actors.iter().map(|actor| actor.get_state()).collect();
+            invariant.check(t_vec)?;
+        }
+        Ok(())
     }
 
     pub fn spawn_system(&mut self, cfg: KompactConfig) -> KompactSystem {
@@ -264,18 +293,6 @@ impl SimulationScenario {
         self.scheduler.0.as_ref().borrow_mut().queue.pop_front()
     }
 
-    pub fn create_and_register<C, F>(
-        &self,
-        sys: KompactSystem,
-        f: F,
-    ) -> (Arc<Component<C>>, KFuture<RegistrationResult>)
-    where
-        F: FnOnce() -> C,
-        C: ComponentDefinition + 'static,
-    {
-        sys.create_and_register(f)
-    }
-
     /*fn register_system_to_simulated_network(&mut self, dispatcher: SimulationNetworkDispatcher) -> () {
         self.network.lock().unwrap().register_system(dispatcher., actor_store)
     }*/
@@ -307,4 +324,34 @@ impl SimulationScenario {
             self.simulate_step();
         }
     }
+
+    //State related
+
+
+    pub fn monitor_invariant(&mut self, invariant: Arc<dyn Invariant<T>>) {
+        self.monitored_invariants.push(invariant);
+    }
+    pub fn monitor_actor(&mut self, actor: Arc<dyn GetState<T>>) {
+        self.monitored_actors.push(actor);
+    }
+        /* 
+    pub fn monitor_progress(&mut self, actor: &Arc<dyn ProgressCounter>) {
+        // appends it to some struct? 
+        todo!()
+    }
+
+    fn check_invariants(&self) -> Result<(), SimulationError> {
+        // checks all invariants
+        todo!()
+    }
+    fn check_progress(&self) -> Result<(), SimulationError> {
+        // checks all progress somehow
+        todo!()
+    }
+    pub fn run_simulation_step(&mut self) -> Result<(), SimulationError> {
+        //self.check_invariants()?;
+        //self.check_progress()?;
+        todo!()
+    }
+    */
 }

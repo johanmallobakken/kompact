@@ -13,6 +13,7 @@ mod paths;
 mod refs;
 pub use paths::*;
 pub use refs::*;
+use std::hash::Hash;
 
 /// Just a trait alias hack to avoid constantly writing `Debug+Send+'static`
 pub trait MessageBounds: fmt::Debug + Send + 'static
@@ -27,6 +28,24 @@ where
 {
     // Nothing to implement
 }
+
+pub trait StateBounds: Clone + fmt::Debug + PartialEq + Hash
+where
+    Self: std::marker::Sized,
+{
+    // Trait aliases need no methods
+    fn get_state();
+}
+impl<S> StateBounds for S
+where
+    S: Clone + fmt::Debug + PartialEq + Hash,
+{
+    // Nothing to implement
+    fn get_state(){
+        todo!();
+    }
+}
+
 
 /// The base trait for all actors
 ///
@@ -113,6 +132,7 @@ pub trait ActorRaw {
 pub trait Actor {
     /// The type of local messages the actor accepts
     type Message: MessageBounds;
+    type State: StateBounds;
 
     /// Handle an incoming local message
     ///
@@ -227,6 +247,8 @@ pub trait NetworkActor: ComponentLogging {
     /// into `Self::Message`.
     type Deserialiser: Deserialiser<Self::Message>;
 
+    type State: StateBounds;
+
     /// Handles all messages after deserialisation
     ///
     /// The `sender` argument will only be supplied if the original message
@@ -255,13 +277,15 @@ pub trait NetworkActor: ComponentLogging {
     }
 }
 
-impl<A, M, D> Actor for A
+impl<A, M, S, D> Actor for A
 where
     M: MessageBounds,
     D: Deserialiser<M>,
-    A: NetworkActor<Message = M, Deserialiser = D>,
+    A: NetworkActor<Message = M, Deserialiser = D, State = S>,
+    S: StateBounds,
 {
     type Message = M;
+    type State = S;
 
     #[inline(always)]
     fn receive_local(&mut self, msg: Self::Message) -> Handled {

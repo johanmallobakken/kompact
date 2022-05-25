@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::net::buffers::{BufferConfig, ChunkAllocator, ChunkRef};
-use std::task::Poll;
+use std::{task::Poll, rc::Rc};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum StateTransition {
@@ -51,6 +51,15 @@ where
     ///
     /// Nothing in this context may be used *before* the parent component is actually initialised!
     pub fn uninitialised() -> ComponentContext<CD> {
+        ComponentContext {
+            inner: None,
+            buffer: RefCell::new(None),
+            blocking_future: None,
+            non_blocking_futures: FxHashMap::default(),
+        }
+    }
+
+    pub fn with_state() -> ComponentContext<CD> {
         ComponentContext {
             inner: None,
             buffer: RefCell::new(None),

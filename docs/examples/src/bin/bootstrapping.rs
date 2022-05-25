@@ -51,6 +51,7 @@ ignore_lifecycle!(BootstrapServer);
 impl NetworkActor for BootstrapServer {
     type Deserialiser = Serde;
     type Message = CheckIn;
+    type State = u64;
 
     fn receive(&mut self, source: Option<ActorPath>, _msg: Self::Message) -> Handled {
         if let Some(process) = source {
@@ -172,6 +173,7 @@ ignore_requests!(EventualLeaderDetection, EventualLeaderElector);
 // ANCHOR: actor
 impl Actor for EventualLeaderElector {
     type Message = Never;
+    type State = u64;
 
     fn receive_local(&mut self, _msg: Self::Message) -> Handled {
         unreachable!();
