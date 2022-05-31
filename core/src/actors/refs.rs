@@ -1009,7 +1009,7 @@ impl<T> Receiver<T> for Recipient<T> {
 #[cfg(test)]
 mod tests {
 
-    use crate::{prelude::*, actors::StateBounds};
+    use crate::{prelude::*};
     use std::{convert::From, sync::Arc, time::Duration};
     use synchronoise::CountdownEvent;
 
@@ -1067,7 +1067,6 @@ mod tests {
     ignore_lifecycle!(LatchDropActor);
     impl Actor for LatchDropActor {
         type Message = CountdownWrapper;
-        type State = u64;
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             self.latch

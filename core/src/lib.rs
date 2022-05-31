@@ -521,7 +521,7 @@ mod tests {
 
     impl Actor for RecvComponent {
         type Message = &'static str;
-        type State = u64;
+         
 
         fn receive_local(&mut self, msg: Self::Message) -> Handled {
             info!(self.ctx.log(), "RecvComponent received {:?}", msg);
@@ -652,7 +652,7 @@ mod tests {
 
     impl Actor for DedicatedComponent {
         type Message = String;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             self.target
@@ -837,7 +837,7 @@ mod tests {
 
     impl Actor for CounterComponent {
         type Message = Box<dyn Any + Send>;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             info!(self.ctx.log(), "CounterComponent got a message!");
@@ -952,7 +952,7 @@ mod tests {
 
     impl Actor for CrasherComponent {
         type Message = Box<dyn Any + Send>;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             info!(self.ctx.log(), "Crashing CrasherComponent");
@@ -1141,7 +1141,7 @@ mod tests {
 
     impl Actor for RecovererComponent {
         type Message = StringMsg;
-        type State = u64;
+         
 
         fn receive_local(&mut self, msg: Self::Message) -> Handled {
             info!(self.ctx.log(), "Got msg: {:?}", msg);

@@ -61,31 +61,21 @@ impl Ponger {
     }
 }
 
-
-
 impl ComponentLifecycle for Pinger {
     fn on_start(&mut self) -> Handled {
-        println!("On start Pinger");
-        //info!(self.log(), "Pinger started!");
+        info!(self.log(), "Pinger started!");
         self.actor_path.tell((Ping, Serde), self);
         Handled::Ok
     }
 }
 
-//redundant, but just to log
+
 impl ComponentLifecycle for Ponger {
     fn on_start(&mut self) -> Handled {
-        println!("On start Ponger");
-        //info!(self.log(), "Ponger started!");
+        info!(self.log(), "Ponger started!");
         Handled::Ok
     }
 }
-/* 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-struct PingPongState {
-    pinger_counter: u64,
-    ponger_counter: u64
-}*/
 
 enum GlobalState {
     Pinger { count: i32},
@@ -94,7 +84,6 @@ enum GlobalState {
 
 impl Actor for Pinger {
     type Message = Never;
-    type State = u64;
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         unimplemented!("We are ignoring local messages");
@@ -105,7 +94,7 @@ impl Actor for Pinger {
         match msg.data.try_deserialise::<Pong, Serde>() {
             Ok(_ping) => {
                 self.counter += 1;
-                println!("RRRRRRRRR pong {} in pinger", self.counter);
+                println!("!!! RECIEVED PONG {} IN PINGER !!!", self.counter);
                 //info!(self.log(), "RECIEVED PONG {} IN PINGER", self.counter);
                 sender.tell((Ping, Serde), self)
             }
@@ -117,7 +106,6 @@ impl Actor for Pinger {
 
 impl Actor for Ponger {
     type Message = Never;
-    type State = u64;
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         unimplemented!("We are ignoring local messages");
@@ -129,8 +117,8 @@ impl Actor for Ponger {
         match msg.data.try_deserialise::<Ping, Serde>() {
             Ok(_ping) => {
                 self.counter += 1;
-                println!("RRRRRRRRR ping {} in ponger", self.counter);
-                //info!(self.log(), "RECIEVED PING {} IN PONGER", self.counter);
+                println!("!!! RECIEVED PING {} IN PONGER !!!", self.counter);
+                info!(self.log(), "RECIEVED PING {} IN PONGER", self.counter);
                 sender.tell((Pong, Serde), self)
             }
             Err(e) => warn!(self.log(), "Invalid data: {:?}", e),
@@ -153,7 +141,7 @@ impl GetState<GlobalState> for Ponger {
 }
 
 pub fn sim() {
-    let mut simulation = SimulationScenario::new();
+    let mut simulation: SimulationScenario<GlobalState> = SimulationScenario::new();
 
     let mut cfg2 = KompactConfig::default();
     let sys2 = simulation.spawn_system(cfg2);

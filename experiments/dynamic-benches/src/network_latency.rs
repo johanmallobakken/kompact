@@ -339,7 +339,7 @@ pub mod pppipelinestatic {
 
     impl Actor for Pinger {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             unimplemented!("Never can't be instantiated!");
@@ -384,7 +384,7 @@ pub mod pppipelinestatic {
 
     impl Actor for Ponger {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             unimplemented!("Never can't be instantiated!");
@@ -538,7 +538,7 @@ pub mod pppipelineindexed {
 
     impl Actor for Pinger {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             unimplemented!("Can't instantiate Never!");
@@ -583,7 +583,7 @@ pub mod pppipelineindexed {
 
     impl Actor for Ponger {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             unimplemented!("Never can't be instantiated!");
@@ -744,7 +744,7 @@ pub mod ppstatic {
 
     impl Actor for Pinger {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             unimplemented!("Never can't be instantiated!");
@@ -794,7 +794,7 @@ pub mod ppstatic {
 
     impl Actor for Ponger {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             unimplemented!("Never can't be instantiated!");
@@ -955,7 +955,7 @@ pub mod ppstatic {
 
         impl Actor for Pinger {
             type Message = Never;
-            type State = u64;
+             
 
             fn receive_local(&mut self, _msg: Self::Message) -> Handled {
                 unimplemented!("Never can't be instantiated!");
@@ -1027,7 +1027,7 @@ pub mod ppstatic {
 
         impl Actor for Ponger {
             type Message = Never;
-            type State = u64;
+             
 
             fn receive_local(&mut self, _msg: Self::Message) -> Handled {
                 unimplemented!("Never can't be instantiated!");
@@ -1105,7 +1105,7 @@ pub mod ppindexed {
 
     impl Actor for Pinger {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             unimplemented!("Never can't be instantiated!");
@@ -1154,7 +1154,7 @@ pub mod ppindexed {
 
     impl Actor for Ponger {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             unimplemented!("Never can't be instantiated!");

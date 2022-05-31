@@ -44,7 +44,7 @@ impl Provide<TestPort> for TestActor {
 
 impl Actor for TestActor {
     type Message = &'static Ping;
-    type State = u64;
+     
 
     fn receive_local(&mut self, _msg: Self::Message) -> Handled {
         Handled::Ok // discard

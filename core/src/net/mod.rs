@@ -725,7 +725,7 @@ pub mod net_test_helpers {
 
     impl Actor for PingerAct {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _pong: Self::Message) -> Handled {
             unimplemented!();
@@ -799,7 +799,7 @@ pub mod net_test_helpers {
 
     impl Actor for PongerAct {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _ping: Self::Message) -> Handled {
             unimplemented!();
@@ -846,7 +846,7 @@ pub mod net_test_helpers {
     ignore_lifecycle!(ForwarderAct);
     impl Actor for ForwarderAct {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _ping: Self::Message) -> Handled {
             unimplemented!();
@@ -1193,7 +1193,7 @@ pub mod net_test_helpers {
 
     impl Actor for BigPingerAct {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _pong: Self::Message) -> Handled {
             unimplemented!();
@@ -1280,7 +1280,7 @@ pub mod net_test_helpers {
 
     impl Actor for BigPongerAct {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _ping: Self::Message) -> Handled {
             unimplemented!();
@@ -1434,7 +1434,7 @@ pub mod net_test_helpers {
 
     impl Actor for NetworkStatusCounter {
         type Message = ();
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             unimplemented!()
@@ -1554,7 +1554,7 @@ pub mod net_test_helpers {
 
     impl Actor for PingStream {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _: Self::Message) -> Handled {
             unimplemented!()

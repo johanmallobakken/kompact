@@ -281,7 +281,6 @@ pub struct SimulationNetworkDispatcher {
 
 impl Actor for SimulationNetworkDispatcher{
     type Message = DispatchEnvelope;
-    type State = u64;
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         match msg {
@@ -673,10 +672,8 @@ impl SimulationNetworkDispatcher {
             }
         }
         let next_wakeup = self.reaper.strategy().curr();
-        /*debug!(
-            self.ctx().log(),
-            "Scheduling reaping at {:?}ms", next_wakeup
-        );*/
+
+        //debug!(self.ctx().log(), "Scheduling reaping at {:?} ms", next_wakeup);
 
         let mut retry_queue = VecDeque::new();
         for mut trash in self.garbage_buffers.drain(..) {
@@ -684,7 +681,7 @@ impl SimulationNetworkDispatcher {
                 retry_queue.push_back(trash);
             }
         }
-        // info!(self.ctx().log(), "tried to clean {} buffer(s)", retry_queue.len()); // manual verification in testing
+        info!(self.ctx().log(), "tried to clean {} buffer(s)", retry_queue.len()); // manual verification in testing
         self.garbage_buffers.append(&mut retry_queue);
 
         self.schedule_once(Duration::from_millis(next_wakeup), move |target, _id| {
@@ -696,18 +693,4 @@ impl SimulationNetworkDispatcher {
     pub fn get_address(&self) -> SocketAddr{
         self.address
     }
-
-    /*fn get_socket_addr(&self) -> &Option<SocketAddr>{
-        match self.net_bridge{
-            Some(bridge) => bridge.local_addr(),
-            None => todo!(),
-        }        
-    }
-
-    fn get_actor_store(&self) -> {
-        match self.net_bridge{
-            Some(bridge) => bridge.local_addr(),
-            None => todo!(),
-        }      
-    }*/
 }

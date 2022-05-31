@@ -147,7 +147,7 @@ impl SimulationNetwork {
                     crate::lookup::LookupResult::None => todo!(),
                     crate::lookup::LookupResult::Err(_) => todo!(),
                 }
-                /*Æself.schedule_once(
+                /*self.schedule_once(
                     latency,
                     move |_,_| {
                         let lease_lookup = lookup.load();

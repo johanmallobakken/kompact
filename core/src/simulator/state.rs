@@ -5,8 +5,6 @@ use std::{
 
 use crate::prelude::*;
 
-pub trait StateBounds {}
-
 pub trait GetState<T>{
     fn get_state(&self) -> T;
 }

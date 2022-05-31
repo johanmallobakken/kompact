@@ -430,7 +430,7 @@ mod tests {
     }
     impl Actor for BufferTestActor {
         type Message = ();
-        type State = u64;
+         
 
         fn receive_local(&mut self, _: Self::Message) -> Handled {
             Handled::Ok

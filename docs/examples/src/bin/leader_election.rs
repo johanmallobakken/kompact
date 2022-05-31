@@ -117,7 +117,7 @@ ignore_requests!(EventualLeaderDetection, EventualLeaderElector);
 // ANCHOR: actor
 impl Actor for EventualLeaderElector {
     type Message = UpdateProcesses;
-    type State = u64;
+     
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         info!(

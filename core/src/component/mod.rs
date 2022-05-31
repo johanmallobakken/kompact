@@ -443,7 +443,6 @@ impl SchedulingDecision {
 
 #[cfg(test)]
 mod tests {
-    use crate::actors::StateBounds;
     use crate::{component::AbstractComponent, prelude::*};
     use futures::channel::oneshot;
     use std::{sync::Arc, thread, time::Duration};
@@ -537,7 +536,7 @@ mod tests {
     impl NetworkActor for ChildComponent {
         type Deserialiser = TestMessage;
         type Message = TestMessage;
-        type State = u64;
+         
 
         fn receive(&mut self, _sender: Option<ActorPath>, _msg: Self::Message) -> Handled {
             info!(self.log(), "Child got message");
@@ -608,7 +607,7 @@ mod tests {
     }
     impl Actor for ParentComponent {
         type Message = ParentMessage;
-        type State = u64;
+         
 
         fn receive_local(&mut self, msg: Self::Message) -> Handled {
             match msg {
@@ -760,7 +759,7 @@ mod tests {
 
     impl Actor for BlockingComponent {
         type Message = BlockMe;
-        type State = u64;
+         
 
         fn receive_local(&mut self, msg: Self::Message) -> Handled {
             match msg {
@@ -939,7 +938,7 @@ mod tests {
 
     impl Actor for AsyncComponent {
         type Message = AsyncMe;
-        type State = u64;
+         
 
         fn receive_local(&mut self, msg: Self::Message) -> Handled {
             match msg {
@@ -1111,7 +1110,7 @@ mod tests {
     }
     impl Actor for CountSender {
         type Message = SendCount;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             self.count_port.trigger(CountMe);
@@ -1148,7 +1147,7 @@ mod tests {
     }
     impl Actor for Counter {
         type Message = Never;
-        type State = u64;
+         
 
         fn receive_local(&mut self, _msg: Self::Message) -> Handled {
             unreachable!("Never type is empty")

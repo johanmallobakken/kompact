@@ -119,7 +119,7 @@ impl<A: MessageBounds> ComponentLifecycle for GenericComp<A> {}
 
 impl<A: MessageBounds> Actor for GenericComp<A> {
     type Message = A;
-    type State = u64;
+     
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         self.test = Some(msg);
