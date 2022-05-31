@@ -103,7 +103,7 @@ impl<E: FuturesExecutor + Sync + 'static> Scheduler for ExecutorScheduler<E> {
 fn maybe_reschedule(c: Arc<dyn CoreContainer>) {
     match c.execute() {
         SchedulingDecision::Schedule => {
-            println!("hello");
+            //println!("hello");
             if cfg!(feature = "use_local_executor") {
                 let res = try_execute_locally(move || maybe_reschedule(c));
                 assert!(!res.is_err(), "Only run with Executors that can support local execute or remove the avoid_executor_lookups feature!");
@@ -113,11 +113,11 @@ fn maybe_reschedule(c: Arc<dyn CoreContainer>) {
             }
         }
         SchedulingDecision::Resume => {
-            println!("Resume");
+            //println!("Resume");
             maybe_reschedule(c)
         },
         _ => {
-            println!("notn");
+            //println!("notn");
             ()
         },
     }

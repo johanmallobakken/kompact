@@ -252,13 +252,13 @@ impl ComponentLifecycle for ComponentSupervisor {
 
 impl Provide<SupervisionPort> for ComponentSupervisor {
     fn handle(&mut self, event: SupervisorMsg) -> Handled {
-        println!("THREAD ID handle: {:?}", std::thread::current().id());
+        /*println!("THREAD ID handle: {:?}", std::thread::current().id());
         match current().name() {
             None => println!("No thread name"),
             Some(thread_name) => {
                 println!("Thread name: {}", thread_name)
             },
-        }
+        }*/
         match event {
             SupervisorMsg::Started(c) => {
                 let id = c.id();
@@ -336,13 +336,13 @@ impl Provide<SupervisionPort> for ComponentSupervisor {
             },
             SupervisorMsg::Shutdown(amp) => match Arc::try_unwrap(amp) {
                 Ok(mp) => {
-                    println!("SupervisorMsg::Shutdown: {:?}", std::thread::current().id());
+                    /*println!("SupervisorMsg::Shutdown: {:?}", std::thread::current().id());
                     match std::thread::current().name() {
                         None => println!("RequiredRef no thread name"),
                         Some(thread_name) => {
                             println!("SupervisorMsg::Shutdown: {}", thread_name)
                         },
-                    }
+                    }*/
                     let promise = mp
                         .into_inner()
                         .expect("Someone broke the promise mutex -.-");

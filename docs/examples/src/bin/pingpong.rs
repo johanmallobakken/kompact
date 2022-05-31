@@ -205,13 +205,13 @@ pub fn sim() {
     println!("done simulation steps");
 
     //simulation.simulate_to_completion();
-    println!("THREAD ID main pp: {:?}", std::thread::current().id());
+    //println!("THREAD ID main pp: {:?}", std::thread::current().id());
 
     //std::thread::sleep(core::time::Duration::from_millis(1000));
 
     //simulation.set_scheduling_choice(SimulatedScheduling::Now);
 
-    println!("FUTURE EXECUTOR FROM NOW");
+    //println!("FUTURE EXECUTOR FROM NOW");
     
     simulation.shutdown_system(sys1);
     //sys1.shutdown_async();

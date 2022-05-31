@@ -335,9 +335,9 @@ impl Dispatcher for SimulationNetworkDispatcher {
 
 impl ComponentLifecycle for SimulationNetworkDispatcher {
     fn on_start(&mut self) -> Handled {
-        println!("STARTING DISPATCHER");
+        //println!("STARTING DISPATCHER");
         //info!(self.ctx.log(), "Starting network...");
-        println!("After log?");
+        //println!("After log?");
         self.start();
         //info!(self.ctx.log(), "Started network just fine.");
         if let Some(promise) = self.notify_ready.take() {
@@ -378,7 +378,7 @@ impl SimulationNetworkDispatcher {
     /// For better readability in combination with [system_components](KompactConfig::system_components),
     /// use [NetworkConfig::build](NetworkConfig::build) instead.
     pub fn with_config(cfg: SimulationNetworkConfig, notify_ready: KPromise<()>, network: Arc<Mutex<SimulationNetwork>>) -> Self {
-        println!("With config systemn");
+        //println!("With config systemn");
 
         let lookup = Arc::new(ArcSwap::from_pointee(ActorStore::new()));
         // Just a temporary assignment...will be replaced from config on start
@@ -409,11 +409,11 @@ impl SimulationNetworkDispatcher {
 
     fn start(&mut self) -> () {
         //debug!(self.ctx.log(), "Starting self and network bridge");
-        println!("STARTING in DISPATCHER");
+        //println!("STARTING in DISPATCHER");
         self.reaper = lookup::gc::ActorRefReaper::from_config(self.ctx.config());
-        println!("after reapoer");
+        //println!("after reapoer");
         let deadletter: DynActorRef = self.ctx.system().deadletter_ref().dyn_ref();
-        println!("deadl lo.rcu");
+        //println!("deadl lo.rcu");
         self.lookup.rcu(|current| {
             let mut next = ActorStore::clone(current);
             next.insert(PathResolvable::System, deadletter.clone())
@@ -421,7 +421,7 @@ impl SimulationNetworkDispatcher {
             next
         });
 
-        println!("preretries=?");
+        //println!("preretries=?");
     
         self.schedule_retries();
     }
@@ -436,7 +436,7 @@ impl SimulationNetworkDispatcher {
 
     fn schedule_retries(&mut self) {
         // First check the retry_map if we should re-request connections
-        println!("Schedule retries");
+        //println!("Schedule retries");
     }
 
     /// Return a reference to the cached system path
@@ -448,10 +448,10 @@ impl SimulationNetworkDispatcher {
 
     fn route(&mut self, dst: ActorPath, msg: DispatchData) -> Result<(), NetworkBridgeErr> {
         if self.system_path_ref() == dst.system() {
-            println!("Routing to same system!");
+            //println!("Routing to same system!");
             let src = self.system_path_ref();
             let dstgg = dst.system();
-            println!("Hello spr: {} port {} . dst.system: {} port {}!", src, src.port(), dstgg, dstgg.port());
+            //println!("Hello spr: {} port {} . dst.system: {} port {}!", src, src.port(), dstgg, dstgg.port());
             self.route_local(dst, msg);
             Ok(())
         } else {
@@ -463,12 +463,12 @@ impl SimulationNetworkDispatcher {
                     Ok(())
                 }
                 Transport::Tcp => {
-                    println!("Routing tcp!");
+                    //println!("Routing tcp!");
                     let addr = SocketAddr::new(*dst.address(), dst.port());
                     self.route_remote_tcp(addr, msg)
                 }
                 Transport::Udp => {
-                    println!("Routing udp!");
+                    //println!("Routing udp!");
                     let addr = SocketAddr::new(*dst.address(), dst.port());
                     self.route_remote_udp(addr, msg)
                 }
@@ -537,7 +537,7 @@ impl SimulationNetworkDispatcher {
         update: bool,
         promise: RegistrationPromise,
     ) {
-        println!("REGISTER ACTOR");
+        //println!("REGISTER ACTOR");
         let ActorRegistration { actor, path } = registration;
         let res = self
             .resolve_path(&path)
@@ -588,7 +588,7 @@ impl SimulationNetworkDispatcher {
         update: bool,
         promise: RegistrationPromise,
     ) {
-        println!("REGISTER POLICY");
+        //println!("REGISTER POLICY");
         let PolicyRegistration { policy, path } = registration;
         let lease = self.lookup.load();
         let path_res = PathResolvable::Segments(path);
@@ -635,7 +635,7 @@ impl SimulationNetworkDispatcher {
     }
 
     fn resolve_path(&mut self, resolvable: &PathResolvable) -> Result<ActorPath, PathParseError> {
-        println!("resolve_path");
+        //println!("resolve_path");
         match resolvable {
             PathResolvable::Path(actor_path) => Ok(actor_path.clone()),
             PathResolvable::Alias(alias) => self
@@ -652,14 +652,14 @@ impl SimulationNetworkDispatcher {
     }
 
     fn deadletter_path(&mut self) -> ActorPath {
-        println!("deadlett");
+        //println!("deadlett");
         ActorPath::Named(NamedPath::with_system(self.system_path(), Vec::new()))
     }
 
     fn schedule_reaper(&mut self) {
         if !self.reaper.is_scheduled() {
             // First time running; mark as scheduled and jump straight to scheduling
-            println!("schedule_reaper");
+            //println!("schedule_reaper");
             self.reaper.schedule();
         } else {
             // Repeated schedule; prune deallocated ActorRefs and update strategy accordingly

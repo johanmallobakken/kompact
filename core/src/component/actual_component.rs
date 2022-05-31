@@ -262,7 +262,7 @@ impl<CD: ComponentTraits> Component<CD> {
     }
 
     fn inner_execute(&self) -> SchedulingDecision {
-        println!("inner_executeeeee");
+        //println!("inner_executeeeee");
         let max_events = self.core.system.throughput();
         let max_messages = self.core.system.max_messages();
 
@@ -275,42 +275,42 @@ impl<CD: ComponentTraits> Component<CD> {
                         .run_blocking_task()
                         .or_from(|| self.core.get_scheduling_decision());
                 }
-                println!("before first loop inner execute");
+                //println!("before first loop inner execute");
                 let mut count: usize = 0;
                 while let Ok(event) = self.ctrl_queue.pop() {
-                    println!("LOOOOP");
+                    //println!("LOOOOP");
                     // ignore max_events for lifecyle events
                     // println!("Executing event: {:?}", event);
                     let res = match event {
                         lifecycle::ControlEvent::Start => {
-                            println!("Start");
+                            //println!("Start");
                             lifecycle::set_active(&self.core.state);
                             debug!(self.logger, "Component started.");
-                            println!("between set_active and on_start");
+                            //println!("between set_active and on_start");
                             let res = guard.definition.on_start();
-                            println!("after on_start");
+                            //println!("after on_start");
                             count += 1;
 
-                            println!("THREAD ID innerexecute: {:?}", std::thread::current().id());
+                            /*println!("THREAD ID innerexecute: {:?}", std::thread::current().id());
 
                             match std::thread::current().name() {
                                 None => println!("inner execute no thread name"),
                                 Some(thread_name) => {
                                     println!("inner execute Thread name: {}", thread_name)
                                 },
-                            }
+                            }*/
 
                             // inform supervisor after local handling to make sure crashing component don't count as started
                             if let Some(ref supervisor) = self.supervisor {
-                                println!("begin if on Start");
+                                //println!("begin if on Start");
                                 let supervisor_msg = SupervisorMsg::Started(self.core.component());
                                 supervisor.enqueue(supervisor_msg);
                             }
-                            println!("end Start");
+                            //println!("end Start");
                             res
                         }
                         lifecycle::ControlEvent::Stop => {
-                            println!("Stop");
+                            //println!("Stop");
                             lifecycle::set_passive(&self.core.state);
                             debug!(self.logger, "Component stopping");
                             let res = guard.definition.on_stop();
@@ -406,7 +406,7 @@ impl<CD: ComponentTraits> Component<CD> {
                 if rem_events > 0 {
                     let skip = guard.skip;
                     let res = guard.definition.execute(rem_events, skip);
-                    println!("last?");
+                    //println!("last?");
                     guard.skip = res.skip;
                     count += res.count;
                     if res.blocking {
@@ -525,11 +525,11 @@ impl<CD: ComponentTraits> CoreContainer for Component<CD> {
     }
 
     fn execute(&self) -> SchedulingDecision {
-        println!("execute begin");
+        //println!("execute begin");
         match self.core.load_state() {
             LifecycleState::Destroyed => return SchedulingDecision::NoWork, // don't execute anything
             LifecycleState::Faulty => {
-                println!("FAULTY");
+                //println!("FAULTY");
                 warn!(
                     self.logger,
                     "Ignoring attempt to execute a faulty component!"
@@ -538,11 +538,11 @@ impl<CD: ComponentTraits> CoreContainer for Component<CD> {
             }
             _ => (), // it's fine to continue
         }
-        println!("AFTER MATCH");
+        //println!("AFTER MATCH");
         //println!("Before inner execute");
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| self.inner_execute()));
         //println!("After inner execute");
-        println!("THREAD ID push: {:?}", std::thread::current().id());
+        //println!("THREAD ID push: {:?}", std::thread::current().id());
 
         match res {
             Ok(decision) => decision, // great
@@ -569,14 +569,14 @@ impl<CD: ComponentTraits> CoreContainer for Component<CD> {
                         std::mem::swap(guard.deref_mut(), &mut recovery_function);
                         let handler = recovery_function(context);
                         
-                        println!("THREAD ID execute: {:?}", std::thread::current().id());
+                        /*println!("THREAD ID execute: {:?}", std::thread::current().id());
 
                         match std::thread::current().name() {
                             None => println!("execute no thread name"),
                             Some(thread_name) => {
                                 println!("execute Thread name: {}", thread_name)
                             },
-                        }
+                        }*/
                         supervisor.enqueue(SupervisorMsg::Faulty(handler));
                     } else {
                         error!(
@@ -606,7 +606,7 @@ impl<CD: ComponentTraits> CoreContainer for Component<CD> {
             },
             None => {
                 let core = self.core();
-                println!("ACTUAL COMP: None");
+                //println!("ACTUAL COMP: None");
                 core.system().schedule(core.component())
             }
         }

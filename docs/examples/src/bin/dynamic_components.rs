@@ -270,7 +270,7 @@ fn main() {
     });
     system.start(&manager);
     let manager_ref = manager.actor_ref();
-    println!("MAKING THREAD: Main??");
+    //println!("MAKING THREAD: Main??");
     std::thread::spawn(move || {
         for line in stdin().lock().lines() {
             let res = (|| -> Result<(), Box<dyn Error>> {

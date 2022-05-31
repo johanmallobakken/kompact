@@ -87,7 +87,7 @@ where
     }
 
     fn inner_ref(&self) -> &ComponentContextInner<CD> {
-        println!("Innner ref?");
+        //println!("Innner ref?");
         //println!("COMPONENT ID: {} ", self.id());
         match self.inner {
             Some(ref c) => c,
@@ -178,7 +178,7 @@ where
     /// system.await_termination();
     /// ```
     pub fn config(&self) -> &Hocon {
-        println!("config as ref");
+        //println!("config as ref");
         self.inner_ref().config.as_ref()
     }
 
@@ -443,7 +443,7 @@ where
     type Message = CD::Message;
 
     fn actor_ref(&self) -> ActorRef<CD::Message> {
-        println!("Actorref");
+        //println!("Actorref");
         self.inner_ref().actor_ref.clone()
     }
 }

@@ -360,7 +360,7 @@ impl TimerActorRef {
             (Some(q), Some(c)) => {
                 let res = c.core().increment_work();
                 q.push(timeout);
-                println!("TIMER");
+                //println!("TIMER");
                 if let SchedulingDecision::Schedule = res {
                     let system = c.core().system();
                     system.schedule(c.clone());

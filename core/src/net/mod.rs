@@ -207,7 +207,7 @@ impl Bridge {
     ) -> (Self, SocketAddr) {
         let (sender, receiver) = channel();
         let (shutdown_p, shutdown_f) = promise();
-        println!("ADDR BEFORE THREAD: {}", addr.port());
+        //println!("ADDR BEFORE THREAD: {}", addr.port());
         match NetworkThreadBuilder::new(
             network_thread_log,
             addr,
@@ -281,10 +281,10 @@ impl Bridge {
 
     /// Returns the local address if already bound
     pub fn local_addr(&self) -> &Option<SocketAddr> {
-        match self.bound_address {
+        /*match self.bound_address {
             Some(addr) => println!("bound_address {}", addr.ip()),
             None => println!("NO bound_address"),
-        }
+        }*/
         &self.bound_address
     }
 
@@ -403,7 +403,7 @@ fn run_network_thread(
     started_promise: KPromise<()>,
     dispatcher_ref: DispatcherRef,
 ) -> async_std::io::Result<()> {
-    println!("MAKING THREAD:run_network_thread");
+    //println!("MAKING THREAD:run_network_thread");
     thread::Builder::new()
         .name("network_thread".to_string())
         .spawn(move || {

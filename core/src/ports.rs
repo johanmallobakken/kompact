@@ -290,14 +290,14 @@ impl<P: Port + 'static> RequiredPort<P> {
     /// Triggered events will be cloned for each connected channel.
     pub fn trigger(&mut self, event: P::Request) -> () {
 
-        println!("THREAD ID trigger: {:?}", std::thread::current().id());
+        //println!("THREAD ID trigger: {:?}", std::thread::current().id());
 
-        match std::thread::current().name() {
+       /*match std::thread::current().name() {
             None => println!("trigger in port no thread name"),
             Some(thread_name) => {
                 println!("trigger in port Thread name: {}", thread_name)
             },
-        }
+        }*/
 
         let mut cleanup_required = false;
         self.common
@@ -398,19 +398,19 @@ impl<P: Port + 'static> PartialEq for ProvidedRef<P> {
 impl<P: Port + 'static> ProvidedRef<P> {
     /// Returns `true` if there are deallocated ports
     pub(crate) fn enqueue(&self, event: P::Request) -> bool {
-        println!("Received message");
+        //println!("Received message");
         match (self.msg_queue.upgrade(), self.component.upgrade()) {
             (Some(q), Some(c)) => {
                 let sd = c.core().increment_work();
                 q.push(event);
-                println!("THREAD ID ProvidedRef: {:?}", std::thread::current().id());
+                //println!("THREAD ID ProvidedRef: {:?}", std::thread::current().id());
 
-                match std::thread::current().name() {
+                /*match std::thread::current().name() {
                     None => println!("ProvidedRef no thread name"),
                     Some(thread_name) => {
                         println!("ProvidedRef Thread name: {}", thread_name)
                     },
-                }
+                }*/
                 if let SchedulingDecision::Schedule = sd {
                     let system = c.core().system();
                     system.schedule(c.clone());
@@ -483,13 +483,13 @@ impl<P: Port + 'static> RequiredRef<P> {
             (Some(q), Some(c)) => {
                 let sd = c.core().increment_work();
                 q.push(event);
-                println!("THREAD ID RequiredRef: {:?}", std::thread::current().id());
+                /*println!("THREAD ID RequiredRef: {:?}", std::thread::current().id());
                 match std::thread::current().name() {
                     None => println!("RequiredRef no thread name"),
                     Some(thread_name) => {
                         println!("RequiredRef Thread name: {}", thread_name)
                     },
-                }
+                }*/
                 if let SchedulingDecision::Schedule = sd {
                     let system = c.core().system();
                     system.schedule(c.clone());

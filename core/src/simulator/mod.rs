@@ -98,21 +98,21 @@ fn maybe_reschedule(c: Arc<dyn CoreContainer>) {
     match c.execute() {
         SchedulingDecision::Schedule => {
             if cfg!(feature = "use_local_executor") {
-                println!("local?");
+                //println!("local?");
                 let res = try_execute_locally(move || maybe_reschedule(c));
                 assert!(!res.is_err(), "Only run with Executors that can support local execute or remove the avoid_executor_lookups feature!");
             } else {
-                println!("nonlocal?");
+                //println!("nonlocal?");
                 let c2 = c.clone();
                 c.system().schedule(c2);
             }
         }
         SchedulingDecision::Resume => {
-            println!("Resume");
+            //println!("Resume");
             maybe_reschedule(c)
         },
         _ => {
-            println!("Notn");
+            //println!("Notn");
             ()
         },
     }
@@ -120,7 +120,7 @@ fn maybe_reschedule(c: Arc<dyn CoreContainer>) {
 
 impl Scheduler for SimulationScheduler {
     fn schedule(&self, c: Arc<dyn CoreContainer>) -> () {
-        println!("schedule: {:?}", std::thread::current().id());
+        /*println!("schedule: {:?}", std::thread::current().id());
 
         match current().name() {
             None => println!("SCHEDULE thread name"),
@@ -129,49 +129,45 @@ impl Scheduler for SimulationScheduler {
             },
         }
 
-        println!("schedule: {} name: {}", c.id(), c.type_name());
+        println!("schedule: {} name: {}", c.id(), c.type_name());*/
 
         match self.get_scheduling() {
             SimulatedScheduling::Future => {
-                println!("FUTURE");
+                //println!("FUTURE");
                 maybe_reschedule(c);
-                println!("AFTER FUTURE");
+                //println!("AFTER FUTURE");
             },
             SimulatedScheduling::Now => {
-                println!("NOW");
-                println!("cid {}", c.id());
+                //println!("NOW");
+                //println!("cid {}", c.id());
                 c.execute();
-                println!("AFTER NOW");
+                //println!("AFTER NOW");
             },
             SimulatedScheduling::Queue => {
-                println!("QUEUE");
+                //println!("QUEUE");
                 self.push_back_to_queue(c);
-                println!("AFTER QUEUE");
+                //println!("AFTER QUEUE");
             },
         }
     }
 
     fn shutdown_async(&self) -> (){
-        println!("TODO shutdown_async");
         todo!();
     }
 
     fn shutdown(&self) -> Result<(), String>{
-        println!("TODO shutdown");
         todo!();
     }
 
     fn box_clone(&self) -> Box<dyn Scheduler>{
-        println!("TODO box_clone");
         Box::new(self.clone()) as Box<dyn Scheduler>
     }
 
     fn poison(&self) -> (){
-        println!("TODO poison");
+        todo!();
     }
 
     fn spawn(&self, future: futures::future::BoxFuture<'static, ()>) -> (){
-        println!("TODO spawn");
         todo!();
     }
 }
@@ -212,7 +208,7 @@ impl TimerRefFactory for SimulationTimer {
 
 impl TimerComponent for SimulationTimer{
     fn shutdown(&self) -> Result<(), String> {
-        println!("Shutdown timer");
+        //println!("Shutdown timer");
         Ok(())
     }
 }
@@ -306,7 +302,7 @@ impl<T: 'static> SimulationScenario<T>{
             Some(w) => {
                 //println!("EXECUTING SOMETHING!!!!!!!!!!!!!!!!");
                 let res = w.execute();
-                println!("helo");
+                //println!("helo");
                 match res {
                     SchedulingDecision::Schedule => self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
                     SchedulingDecision::AlreadyScheduled => todo!(),
