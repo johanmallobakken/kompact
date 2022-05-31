@@ -1,8 +1,10 @@
 use kompact::prelude::*;
 use kompact::{prelude::*, serde_serialisers::*};
 use serde::{Deserialize, Serialize};
-
-
+use std::borrow::BorrowMut;
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::Mutex;
 use std::{
     time::Duration,
     thread::{
@@ -19,7 +21,7 @@ struct Pinger {
 
 #[derive(ComponentDefinition)]
 struct Ponger {
-    ctx: ComponentContext<Self>,
+    lol: ComponentContext<Self>,
     counter: u64
 }
 
@@ -53,7 +55,7 @@ impl Pinger {
 impl Ponger {
     pub fn new() -> Self {
         Ponger {
-            ctx: ComponentContext::uninitialised(),
+            lol: ComponentContext::uninitialised(),
             counter: 0
         }
     }
@@ -61,20 +63,23 @@ impl Ponger {
 
 impl ComponentLifecycle for Pinger {
     fn on_start(&mut self) -> Handled {
-        println!("On start Pinger");
-        //info!(self.log(), "Pinger started!");
+        info!(self.log(), "Pinger started!");
         self.actor_path.tell((Ping, Serde), self);
         Handled::Ok
     }
 }
 
-//redundant, but just to log
+
 impl ComponentLifecycle for Ponger {
     fn on_start(&mut self) -> Handled {
-        println!("On start Ponger");
-        //info!(self.log(), "Ponger started!");
+        info!(self.log(), "Ponger started!");
         Handled::Ok
     }
+}
+
+enum GlobalState {
+    Pinger { count: i32},
+    Ponger { count: i32},
 }
 
 impl Actor for Pinger {
@@ -89,7 +94,7 @@ impl Actor for Pinger {
         match msg.data.try_deserialise::<Pong, Serde>() {
             Ok(_ping) => {
                 self.counter += 1;
-                println!("RRRRRRRRR pong {} in pinger", self.counter);
+                println!("!!! RECIEVED PONG {} IN PINGER !!!", self.counter);
                 //info!(self.log(), "RECIEVED PONG {} IN PINGER", self.counter);
                 sender.tell((Ping, Serde), self)
             }
@@ -107,12 +112,13 @@ impl Actor for Ponger {
     }
 
     fn receive_network(&mut self, msg: NetMessage) -> Handled {
+
         let sender = msg.sender;
         match msg.data.try_deserialise::<Ping, Serde>() {
             Ok(_ping) => {
                 self.counter += 1;
-                println!("RRRRRRRRR ping {} in ponger", self.counter);
-                //info!(self.log(), "RECIEVED PING {} IN PONGER", self.counter);
+                println!("!!! RECIEVED PING {} IN PONGER !!!", self.counter);
+                info!(self.log(), "RECIEVED PING {} IN PONGER", self.counter);
                 sender.tell((Pong, Serde), self)
             }
             Err(e) => warn!(self.log(), "Invalid data: {:?}", e),
@@ -121,8 +127,21 @@ impl Actor for Ponger {
     }
 }
 
+impl GetState<GlobalState> for Pinger {
+    fn get_state(&self) -> GlobalState {
+        todo!();
+    }
+}
+
+
+impl GetState<GlobalState> for Ponger {
+    fn get_state(&self) -> GlobalState {
+        todo!();
+    }
+}
+
 pub fn sim() {
-    let mut simulation = SimulationScenario::new();
+    let mut simulation: SimulationScenario<GlobalState> = SimulationScenario::new();
 
     let mut cfg2 = KompactConfig::default();
     let sys2 = simulation.spawn_system(cfg2);
@@ -165,6 +184,7 @@ pub fn sim() {
     println!("start in main 17 {:?}", simulation.simulate_step());
 
     simulation.restore_link(sys1.clone(), sys2.clone());
+
 
     println!("start in main 18 {:?}", simulation.simulate_step());
     println!("start in main 19 {:?}", simulation.simulate_step());

@@ -66,6 +66,7 @@ rand                            = "0.8.0"
 rand_chacha                     = "0.3.1"
 async-task                      = "4.1.0"
 backtrace                       = "0.3"
+slab                            = "0.4.6"
 
 # Optional
 protobuf 						= {version = "2", optional = true, features = ["with-bytes"]}

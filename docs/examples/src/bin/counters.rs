@@ -77,6 +77,7 @@ impl Provide<CounterPort> for Counter {
 
 impl Actor for Counter {
     type Message = Ask<CountMe, CurrentCount>;
+     
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         msg.complete(|_request| {

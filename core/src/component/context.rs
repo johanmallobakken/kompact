@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::net::buffers::{BufferConfig, ChunkAllocator, ChunkRef};
-use std::task::Poll;
+use std::{task::Poll, rc::Rc};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum StateTransition {
@@ -59,6 +59,15 @@ where
         }
     }
 
+    pub fn with_state() -> ComponentContext<CD> {
+        ComponentContext {
+            inner: None,
+            buffer: RefCell::new(None),
+            blocking_future: None,
+            non_blocking_futures: FxHashMap::default(),
+        }
+    }
+
     /// Initialise the component context with the actual component instance
     ///
     /// This *must* be invoked from [setup](ComponentDefinition::setup).
@@ -78,6 +87,8 @@ where
     }
 
     fn inner_ref(&self) -> &ComponentContextInner<CD> {
+        println!("Innner ref?");
+        //println!("COMPONENT ID: {} ", self.id());
         match self.inner {
             Some(ref c) => c,
             None => panic!("Component improperly initialised!"),
@@ -167,6 +178,7 @@ where
     /// system.await_termination();
     /// ```
     pub fn config(&self) -> &Hocon {
+        println!("config as ref");
         self.inner_ref().config.as_ref()
     }
 
@@ -431,6 +443,7 @@ where
     type Message = CD::Message;
 
     fn actor_ref(&self) -> ActorRef<CD::Message> {
+        println!("Actorref");
         self.inner_ref().actor_ref.clone()
     }
 }

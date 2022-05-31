@@ -130,6 +130,7 @@ impl ComponentLifecycle for Manager {
 // ANCHOR: manager_actor
 impl Actor for Manager {
     type Message = ManagerMessage;
+     
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         match msg {
@@ -216,6 +217,7 @@ ignore_lifecycle!(Worker);
 // ANCHOR: worker_actor
 impl Actor for Worker {
     type Message = WithSender<WorkPart, ManagerMessage>;
+     
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         let my_slice = &msg.data[msg.range.clone()];

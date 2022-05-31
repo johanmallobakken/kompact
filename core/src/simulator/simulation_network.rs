@@ -1,342 +1,168 @@
 use arc_swap::ArcSwap;
-use ipnet::{Ipv6Net, Ipv4Net, IpNet};
-use iprange::{IpRange, ToNetwork};
-use log::{warn, error};
-use rustc_hash::FxHashSet;
+use futures::{channel::oneshot, never::Never};
+use log::*;
+use rand::{Rng, prelude::StdRng, SeedableRng};
+use std::{
+    any::Any,
+    collections::{HashMap, HashSet},
+    net::SocketAddr,
+    ops::Range,
+    sync::{Arc, Mutex},
+    time::Duration, borrow::BorrowMut,
+};
+use crate::{
+    actors::{Actor, ActorPath, Dispatcher, DynActorRef, SystemPath, Transport},
+    component::{Component, ComponentContext, ExecuteResult}, prelude::{ComponentLifecycle, Handled, NetMessage, KompactSystem},
+    timer::timer_manager::Timer, lookup::{ActorLookup, ActorStore}, messaging::DispatchData,
+};
+use crate::DynamicPortAccess;
+use crate::{timer::{TimerRef, timer_manager::TimerManager}, prelude::{ComponentDefinition}};
 
-use crate::{prelude::{KompactSystem, NetMessage}, net::events::DispatchEvent, messaging::DispatchData, lookup::{ActorStore, ActorLookup, LookupResult}, KompactLogger, actors::SystemPath};
-use std::{collections::{HashMap, HashSet}, net::IpAddr, sync::Arc};
-pub use std::net::SocketAddr;
-
-use super::simulation_bridge::SimulationBridge;
-
+use kompact_actor_derive::Actor;
+use crate::ActorRaw;
 
 pub struct SimulationNetwork {
-    socket_lookup_map: HashMap<SocketAddr, Arc<ArcSwap<ActorStore>>>,
-    socket_system_map: HashMap<SocketAddr, SystemPath>,
-    log: Option<KompactLogger>,
-    port_counter: u16,
-    broken_links: HashSet<(SystemPath, SystemPath)>
+    rand: StdRng,
+    config: Config,
+    stat: Stat,
+    endpoints: HashMap<SocketAddr, Arc<ArcSwap<ActorStore>>>,
+    clogged: HashSet<SocketAddr>,
+    clogged_link: HashSet<(SocketAddr, SocketAddr)>,
 }
 
-unsafe impl Send for SimulationNetwork {}
-unsafe impl Sync for SimulationNetwork {}
+#[derive(Debug)]
+#[allow(missing_docs)]
+pub struct Config {
+    pub packet_loss_rate: f64,
+    pub send_latency: Range<Duration>,
+}
 
-impl SimulationNetwork{
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            packet_loss_rate: 0.0,
+            send_latency: Duration::from_millis(1)..Duration::from_millis(10),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Stat {
+    pub msg_count: u64,
+    pub system_count: u16
+}
+
+impl SimulationNetwork {
     pub fn new() -> Self {
-        SimulationNetwork {
-            socket_lookup_map: HashMap::new(),
-            socket_system_map: HashMap::new(),
-            log: None,
-            port_counter: 0,
-            broken_links: HashSet::new()
+        Self {
+            rand: StdRng::seed_from_u64(0),
+            config: Config::default(),
+            stat: Stat::default(),
+            endpoints: HashMap::new(),
+            clogged: HashSet::new(),
+            clogged_link: HashSet::new(),
         }
     }
 
-    pub fn add_logger(&mut self, logger: KompactLogger){
-        self.log = Option::Some(logger);
+    pub fn update_config(&mut self, f: impl FnOnce(&mut Config)) {
+        f(&mut self.config);
     }
 
-    pub fn register_system(&mut self, mut addr: SocketAddr, actor_store: Arc<ArcSwap<ActorStore>>){
-        self.socket_lookup_map.insert(addr, actor_store);
+    pub fn stat(&self) -> &Stat {
+        &self.stat
     }
 
-    pub fn register_system_path(&mut self, addr: SocketAddr, syspath: SystemPath) {
-        self.socket_system_map.insert(addr, syspath);
+    pub fn register_system(&mut self, mut addr: SocketAddr, lookup: Arc<ArcSwap<ActorStore>>, transport: Transport) -> SystemPath {
+        addr.set_port(self.stat.system_count);
+        self.stat.system_count += 1; 
+
+        let system_path = SystemPath::new(transport, addr.ip(), addr.port());
+        self.endpoints.insert(system_path.socket_address(), lookup);
+        system_path
     }
 
-    pub fn get_port(&mut self) -> u16{
-        self.port_counter += 1;
-
-        println!("GIVING PORT: {}", self.port_counter);
-
-        self.port_counter
+    #[allow(dead_code)]
+    pub fn remove(&mut self, target: &SocketAddr) {
+        debug!("remove: {}", target);
+        self.endpoints.remove(target);
+        self.clogged.remove(target);
     }
 
-    pub fn send(&mut self, src: SystemPath, event: DispatchEvent) -> () {
-        self.handle_dispatch_event(src, event);
+    pub fn clog(&mut self, target: SocketAddr) {
+        assert!(self.endpoints.contains_key(&target));
+        debug!("clog: {}", target);
+        self.clogged.insert(target);
     }
 
-    fn handle_dispatch_event(&mut self, src_syspath: SystemPath,  event: DispatchEvent) {
-        match event {
-            DispatchEvent::SendTcp(address, data) => {
-                match self.socket_system_map.get(&address).take() {
-                    Some(dst_syspath) => {
-                        if self.broken_links.contains(&(src_syspath, dst_syspath.clone())){
-                            println!("Link is broken!");
-                        } else {
-                            self.send_tcp_message(address, data);
-                        }
-                    },
-                    None => self.send_tcp_message(address, data),
-                }
-            }
-            DispatchEvent::SendUdp(address, data) => {
-                println!("SENDING UDPPPPPPPPPPP");
-                println!("Size socket_system_map len: {}", self.socket_system_map.len());
-                match self.socket_system_map.get(&address).take() {
-                    Some(dst_syspath) => {
-                        let boold = self.broken_links.contains(&(src_syspath, dst_syspath.clone()));
-                        println!("Size broken links : {} contains: {}", self.broken_links.len(), boold);
-                        if boold {
-                            println!("Link is broken!");
-                        } else {
-                            self.send_udp_message(address, data);
-                        }
-                    },
-                    None => self.send_udp_message(address, data),
-                }
-            }
-            DispatchEvent::Stop => {
-                self.stop();
-            }
-            DispatchEvent::Kill => {
-                self.kill();
-            }
-            DispatchEvent::Connect(addr) => {
-                /*if self.block_list.socket_addr_is_blocked(&addr) {
-                    return;
-                }*/
-                self.request_stream(addr);
-            }
-            DispatchEvent::ClosedAck(addr) => {
-                self.handle_closed_ack(addr);
-            }
-            DispatchEvent::Close(addr) => {
-                self.close_connection(addr);
-            }
-            DispatchEvent::BlockSocket(addr) => {
-                self.block_socket_addr(addr);
-            }
-            DispatchEvent::BlockIpAddr(ip_addr) => {
-                self.block_ip_addr(ip_addr);
-            }
-            DispatchEvent::AllowSocket(addr) => {
-                self.allow_socket_addr(addr);
-            }
-            DispatchEvent::AllowIpAddr(ip_addr) => {
-                self.allow_ip_addr(ip_addr);
-            }
-            DispatchEvent::BlockIpNet(net) => {
-                self.block_ip_net(net);
-            }
-            DispatchEvent::AllowIpNet(net) => {
-                self.allow_ip_net(net);
-            }
+    pub fn unclog(&mut self, target: SocketAddr) {
+        assert!(self.endpoints.contains_key(&target));
+        debug!("unclog: {}", target);
+        self.clogged.remove(&target);
+    }
+
+    pub fn clog_link(&mut self, src: SocketAddr, dst: SocketAddr) {
+        println!("addr1: {} addr2: {}", src.to_string(), dst.to_string());
+        assert!(self.endpoints.contains_key(&src));
+        assert!(self.endpoints.contains_key(&dst));
+        debug!("clog: {} -> {}", src, dst);
+        self.clogged_link.insert((src, dst));
+    }
+
+    pub fn unclog_link(&mut self, src: SocketAddr, dst: SocketAddr) {
+        assert!(self.endpoints.contains_key(&src));
+        assert!(self.endpoints.contains_key(&dst));
+        debug!("unclog: {} -> {}", src, dst);
+        self.clogged_link.remove(&(src, dst));
+    }
+
+    pub fn send(&mut self, src: SocketAddr, dst: SocketAddr, data: DispatchData) {
+        println!("senddd addr1: {} addr2: {}", src.to_string(), dst.to_string());
+        println!("contains clogged link?: {} ", self.clogged_link.contains(&(src, dst)));
+        assert!(self.endpoints.contains_key(&src));
+        if !self.endpoints.contains_key(&dst)
+            || self.clogged.contains(&src)
+            || self.clogged.contains(&dst)
+            || self.clogged_link.contains(&(src, dst))
+        {
+            trace!("no connection");
+            return;
         }
-    }
-    
-    fn send_tcp_message(&mut self, address: SocketAddr, data: DispatchData){
-    }
+        if self.rand.gen_bool(self.config.packet_loss_rate) {
+            trace!("packet loss");
+            return;
+        }
+        let lookup = self.endpoints[&dst].clone();
 
-    fn send_udp_message(&mut self, address: SocketAddr, data: DispatchData){
-        let local_msg = data.into_local();
-        let lookup = self.socket_lookup_map.get(&address);
-        match local_msg {
+        let latency = self.rand.gen_range(self.config.send_latency.clone());
+        trace!("delay: {:?}", latency);
+
+        let msg = data.into_local();
+
+        match msg {
             Ok(envelope) => {
-                match lookup {
-                    Some(l) => {
-                        let lease_lookup = l.load();
+                let lease_lookup = lookup.load();
+                match lease_lookup.get_by_actor_path(&envelope.receiver) {
+                    crate::lookup::LookupResult::Ref(actor) => actor.enqueue(envelope),
+                    crate::lookup::LookupResult::Group(_) => todo!(),
+                    crate::lookup::LookupResult::None => todo!(),
+                    crate::lookup::LookupResult::Err(_) => todo!(),
+                }
+                /*self.schedule_once(
+                    latency,
+                    move |_,_| {
+                        let lease_lookup = lookup.load();
                         match lease_lookup.get_by_actor_path(&envelope.receiver) {
-                            LookupResult::Ref(actor) => {
-                                actor.enqueue(envelope);
-                            },
-                            LookupResult::Group(group) => {
-                                match &self.log{
-                                    Some(log) => group.route(envelope, &log),
-                                    None => todo!(),
-                                }
-                            },
-                            LookupResult::None => {
-                                /* warn!(
-                                    "{} {} {}", self.log,
-                                    "Could not find actor reference for destination: {:?}, dropping message",
-                                    envelope.receiver
-                                );*/
-
-                            }
-                            LookupResult::Err(e) => {
-                                /* error!(
-                                    "{} {} {} {}", self.log,
-                                    "An error occurred during local actor lookup for destination: {:?}, dropping message. The error was: {}",
-                                    envelope.receiver,
-                                    e
-                                );*/
-                            }
+                            crate::lookup::LookupResult::Ref(actor) => actor.enqueue(envelope),
+                            crate::lookup::LookupResult::Group(_) => todo!(),
+                            crate::lookup::LookupResult::None => todo!(),
+                            crate::lookup::LookupResult::Err(_) => todo!(),
                         }
+                        Handled::Ok
                     }
-                    None => todo!(),
-                }
-            }
-            Err(e) => {
-                todo!();
-            }
+                );*/
+            },
+            Err(e) => todo!(),
         }
-    }
-
-    fn stop(&mut self){
-        todo!();
-    }
-
-    fn kill(&mut self){
-        todo!();
-    }
-
-    fn request_stream(&mut self, address: SocketAddr) {
-        todo!();
-    }
-
-    fn handle_closed_ack(&mut self, address: SocketAddr) {
-        todo!();
-    }
-
-    fn close_connection(&mut self, address: SocketAddr) {
-        todo!();
-    }
-
-    fn block_socket_addr(&mut self, address: SocketAddr) {
-        todo!();
-    }
-
-    fn block_ip_addr(&mut self, address: IpAddr) {
-        todo!();
-    }
-
-    fn allow_socket_addr(&mut self, address: SocketAddr) {
-        todo!();
-    }
-
-    fn allow_ip_addr(&mut self, address: IpAddr) {
-        todo!();
-    }
-
-    fn block_ip_net(&mut self, net: IpNet) {
-        todo!();   
-    }
-
-    fn allow_ip_net(&mut self, net: IpNet) {
-        todo!();
-    }
-
-    pub fn break_link(&mut self, sys1: SystemPath, sys2: SystemPath){
-        self.broken_links.insert((sys1, sys2));
-    }
-
-    pub fn restore_link(&mut self, sys1: SystemPath, sys2: SystemPath){
-        self.broken_links.remove(&(sys1, sys2));
-    }
-}
-
-#[derive(Default)]
-pub struct BlockList {
-    ipv4_set: IpRange<Ipv4Net>,
-    ipv6_set: IpRange<Ipv6Net>,
-    blocked_socket_addr: FxHashSet<SocketAddr>,
-    allowed_socket_addr: FxHashSet<SocketAddr>,
-}
-
-impl BlockList {
-    /// Returns true if the rule-set has been modified
-    fn block_ip_addr(&mut self, ip_addr: IpAddr) -> bool {
-        match ip_addr {
-            IpAddr::V4(addr) => {
-                if self.ipv4_set.contains(&addr.to_network()) {
-                    return false;
-                }
-                self.ipv4_set.add(addr.to_network());
-            }
-            IpAddr::V6(addr) => {
-                if self.ipv6_set.contains(&addr.to_network()) {
-                    return false;
-                }
-                self.ipv6_set.add(addr.to_network());
-            }
-        }
-        true
-    }
-
-    fn block_ip_net(&mut self, ip_net: IpNet) -> () {
-        match ip_net {
-            IpNet::V4(net) => {
-                self.ipv4_set.add(net);
-            }
-            IpNet::V6(net) => {
-                self.ipv6_set.add(net);
-            }
-        }
-    }
-
-    fn allow_ip_net(&mut self, ip_net: IpNet) -> () {
-        match ip_net {
-            IpNet::V4(net) => {
-                self.ipv4_set.remove(net);
-            }
-            IpNet::V6(net) => {
-                self.ipv6_set.remove(net);
-            }
-        }
-    }
-
-    /// Returns true if the rule-set has been modified
-    fn allow_ip_addr(&mut self, ip_addr: &IpAddr) -> bool {
-        match ip_addr {
-            IpAddr::V4(addr) => {
-                if self.ipv4_set.contains(&addr.to_network()) {
-                    self.ipv4_set.remove(addr.to_network());
-                    return true;
-                }
-            }
-            IpAddr::V6(addr) => {
-                if self.ipv6_set.contains(&addr.to_network()) {
-                    self.ipv6_set.remove(addr.to_network());
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
-    /// Returns true if the rule-set has been modified
-    fn block_socket_addr(&mut self, socket_addr: SocketAddr) -> bool {
-        self.allowed_socket_addr.remove(&socket_addr)
-            || self.blocked_socket_addr.insert(socket_addr)
-    }
-
-    /// Returns true if the rule-set has been modified
-    fn allow_socket_addr(&mut self, socket_addr: &SocketAddr) -> bool {
-        self.blocked_socket_addr.remove(socket_addr)
-            || self.allowed_socket_addr.insert(*socket_addr)
-    }
-
-    /// Returns true if the IpAddr is fully blocked, i.e. it's Blocked and there's no Allowed SocketAddr with the given IP
-    fn ip_addr_is_blocked(&self, ip_addr: &IpAddr) -> bool {
-        if self.ip_sets_contains_ip_addr(ip_addr) {
-            // The IP may be partially blocked
-            !self
-                .allowed_socket_addr
-                .iter()
-                .any(|socket_addr| socket_addr.ip() == *ip_addr)
-        } else {
-            // The IP isn't Blocked at all, no need to check the Socket address list
-            false
-        }
-    }
-
-    /// Returns true if the SocketAddr is blocked
-    fn socket_addr_is_blocked(&self, socket_addr: &SocketAddr) -> bool {
-        if self.allowed_socket_addr.contains(socket_addr) {
-            false
-        } else if self.blocked_socket_addr.contains(socket_addr) {
-            true
-        } else {
-            self.ip_sets_contains_ip_addr(&socket_addr.ip())
-        }
-    }
-
-    fn ip_sets_contains_ip_addr(&self, ip_addr: &IpAddr) -> bool {
-        match ip_addr {
-            IpAddr::V4(addr) => self.ipv4_set.contains(&addr.to_network()),
-            IpAddr::V6(addr) => self.ipv6_set.contains(&addr.to_network()),
-        }
+        self.stat.msg_count += 1;
     }
 }

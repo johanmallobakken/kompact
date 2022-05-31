@@ -132,6 +132,7 @@ mod tests {
 
     impl Actor for TestComponent {
         type Message = Ask<u64, ()>;
+         
 
         fn receive_local(&mut self, msg: Self::Message) -> Handled {
             msg.complete(|num| {
@@ -199,6 +200,7 @@ mod tests {
 
     impl Actor for AsyncTestComponent {
         type Message = Ask<u64, ()>;
+         
 
         fn receive_local(&mut self, msg: Self::Message) -> Handled {
             match self.mode {

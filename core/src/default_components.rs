@@ -181,6 +181,7 @@ impl DeadletterBox {
 
 impl Actor for DeadletterBox {
     type Message = Never;
+     
 
     /// Handles local messages.
     fn receive_local(&mut self, _msg: Self::Message) -> Handled {
@@ -232,6 +233,7 @@ impl LocalDispatcher {
 
 impl Actor for LocalDispatcher {
     type Message = DispatchEnvelope;
+     
 
     fn receive_local(&mut self, msg: Self::Message) -> Handled {
         use crate::messaging::{RegistrationEnvelope, RegistrationError, RegistrationPromise};

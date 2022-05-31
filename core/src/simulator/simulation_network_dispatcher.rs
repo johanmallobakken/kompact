@@ -36,7 +36,6 @@ use dispatch::lookup::{ActorLookup, ActorStore, InsertResult, LookupResult};
 use dispatch::queue_manager::QueueManager;
 use rustc_hash::FxHashMap;
 use std::{collections::VecDeque, net::IpAddr, time::Duration};
-use simulation_bridge::SimulationBridge;
 
 // Default values for network config.
 mod defaults {
@@ -266,10 +265,8 @@ pub struct SimulationNetworkDispatcher {
     /// send messages for local actors 
     lookup: Arc<ArcSwap<ActorStore>>,
     // Fields initialized at [Start](ControlEvent::Start) – they require ComponentContextual awareness
-    /// Bridge into asynchronous networking layer
-    net_bridge: Option<SimulationBridge>,
     /// A cached version of the bound system path
-    system_path: Option<SystemPath>,
+    system_path: SystemPath,
     /// Management for queuing Frames during network unavailability (conn. init. and MPSC unreadiness)
     queue_manager: QueueManager,
     /// Reaper which cleans up deregistered actor references in the actor lookup table
@@ -327,16 +324,7 @@ impl Dispatcher for SimulationNetworkDispatcher {
     ///
     /// This is only possible after the socket is bound and will panic if attempted earlier!
     fn system_path(&mut self) -> SystemPath {
-        println!("SYSTEM PATH CALL");
-        match self.system_path {
-            Some(ref path) => path.clone(),
-            None => {
-                let bound_addr = self.address;
-                let sp = SystemPath::new(self.cfg.transport, bound_addr.ip(), bound_addr.port());
-                self.system_path = Some(sp.clone());
-                sp
-            }
-        }
+       self.system_path.clone()
     }
 
     fn network_status_port(&mut self) -> &mut ProvidedPort<NetworkStatusPort> {
@@ -347,9 +335,11 @@ impl Dispatcher for SimulationNetworkDispatcher {
 
 impl ComponentLifecycle for SimulationNetworkDispatcher {
     fn on_start(&mut self) -> Handled {
-        info!(self.ctx.log(), "Starting network...");
+        println!("STARTING DISPATCHER");
+        //info!(self.ctx.log(), "Starting network...");
+        println!("After log?");
         self.start();
-        info!(self.ctx.log(), "Started network just fine.");
+        //info!(self.ctx.log(), "Started network just fine.");
         if let Some(promise) = self.notify_ready.take() {
             promise
                 .complete()
@@ -373,22 +363,30 @@ impl ComponentLifecycle for SimulationNetworkDispatcher {
     }
 }
 
+
+fn register_system(
+    network: Arc<Mutex<SimulationNetwork>>, 
+    address: SocketAddr,
+    lookup: Arc<ArcSwap<ActorStore>>,
+    transport: Transport
+) -> SystemPath {
+    network.lock().unwrap().register_system(address, lookup, transport)
+}
+
 impl SimulationNetworkDispatcher {
     /// Create a new dispatcher with the given configuration
-    ///
     /// For better readability in combination with [system_components](KompactConfig::system_components),
     /// use [NetworkConfig::build](NetworkConfig::build) instead.
     pub fn with_config(cfg: SimulationNetworkConfig, notify_ready: KPromise<()>, network: Arc<Mutex<SimulationNetwork>>) -> Self {
+        println!("With config systemn");
+
         let lookup = Arc::new(ArcSwap::from_pointee(ActorStore::new()));
         // Just a temporary assignment...will be replaced from config on start
         let reaper = lookup::gc::ActorRefReaper::default();
         
         let mut address = cfg.addr.clone();
-        {
-            let mut net = network.lock().unwrap();
-            address.set_port(net.get_port());
-            net.register_system(address, lookup.clone());
-        }
+
+        let system_path = register_system(network.clone(), address.clone(), lookup.clone(), cfg.transport.clone());
 
         //println!("THIS IS PORT: {}", s_addr.port());
 
@@ -397,8 +395,7 @@ impl SimulationNetworkDispatcher {
             connections: Default::default(),
             cfg,
             lookup,
-            net_bridge: None,
-            system_path: None,
+            system_path,
             queue_manager: QueueManager::new(),
             reaper,
             notify_ready: Some(notify_ready),
@@ -409,18 +406,22 @@ impl SimulationNetworkDispatcher {
         }
     }
 
+
     fn start(&mut self) -> () {
         //debug!(self.ctx.log(), "Starting self and network bridge");
+        println!("STARTING in DISPATCHER");
         self.reaper = lookup::gc::ActorRefReaper::from_config(self.ctx.config());
-        self.start_bridge(self.cfg.addr);
-    
+        println!("after reapoer");
         let deadletter: DynActorRef = self.ctx.system().deadletter_ref().dyn_ref();
+        println!("deadl lo.rcu");
         self.lookup.rcu(|current| {
             let mut next = ActorStore::clone(current);
             next.insert(PathResolvable::System, deadletter.clone())
                 .expect("Deadletter shouldn't error");
             next
         });
+
+        println!("preretries=?");
     
         self.schedule_retries();
     }
@@ -435,88 +436,14 @@ impl SimulationNetworkDispatcher {
 
     fn schedule_retries(&mut self) {
         // First check the retry_map if we should re-request connections
-        let drain = self.retry_map.clone();
-        self.retry_map.clear();
-        for (addr, retry) in drain {
-            if retry < self.cfg.max_connection_retry_attempts {
-                // Make sure we will re-request connection later
-                self.retry_map.insert(addr, retry + 1);
-                if let Some(bridge) = &self.net_bridge {
-                    // Do connection attempt
-                    /*debug!(
-                        self.ctx().log(),
-                        "Dispatcher retrying connection to host {}, attempt {}/{}",
-                        addr,
-                        retry,
-                        self.cfg.max_connection_retry_attempts
-                    );*/
-                    bridge.connect(Transport::Tcp, addr).unwrap();
-                }
-            } else {
-                // Too many retries, give up on the connection.
-                info!(
-                    self.ctx().log(),
-                    "Dispatcher giving up on remote host {}, dropping queues", addr
-                );
-                self.queue_manager.drop_queue(&addr);
-                self.connections.remove(&addr);
-                /*self.network_status_port
-                    .trigger(NetworkStatus::ConnectionDropped(SystemPath::with_socket(
-                        Transport::Tcp,
-                        addr,
-                    )));*/
-            }
-        }
-        self.schedule_once(
-            Duration::from_millis(self.cfg.connection_retry_interval),
-            move |target, _id| {
-                target.schedule_retries();
-                Handled::Ok
-            },
-        );
+        println!("Schedule retries");
     }
-
-    //Needs to adapt to the new bridge implementation.
-    fn start_bridge(&mut self, address: SocketAddr) -> () {
-        let dispatcher = self
-            .actor_ref()
-            .hold()
-            .expect("Self can hardly be deallocated!");
-        let bridge_logger = self.ctx.log().new(o!("owner" => "Bridge"));
-        let network_thread_logger = self.ctx.log().new(o!("owner" => "NetworkThread"));
-        let (mut simulation_bridge, _addr) = SimulationBridge::new(
-            self.lookup.clone(),
-            network_thread_logger,
-            bridge_logger,
-            self.address,
-            &self.cfg,
-            self.network.clone(),
-            self.cfg.transport
-        );
-
-        //simulation_bridge.set_dispatcher(dispatcher);
-        self.net_bridge = Some(simulation_bridge);
-    }
-
 
     /// Return a reference to the cached system path
     ///
     /// Mutable, since it will update the cached value, if necessary.
     pub fn system_path_ref(&mut self) -> &SystemPath {
-        println!("system_path_ref");
-        match self.system_path {
-            Some(ref path) => path,
-            None => {
-                let _ = self.system_path(); // just to fill the cache
-                if let Some(ref path) = self.system_path {
-                    path
-                } else {
-                    unreachable!(
-                        "Cached value should have been filled by calling self.system_path()!"
-                    );
-                }
-            }
-        }
+        &self.system_path
     }
 
     fn route(&mut self, dst: ActorPath, msg: DispatchData) -> Result<(), NetworkBridgeErr> {
@@ -587,101 +514,19 @@ impl SimulationNetworkDispatcher {
 
     fn route_remote_udp(
         &mut self,
-        addr: SocketAddr,
+        dst_addr: SocketAddr,
         data: DispatchData,
     ) -> Result<(), NetworkBridgeErr> {
-        println!("ROUTE REMOTE UDP");
-        if let Some(bridge) = &self.net_bridge {
-            bridge.route(addr, data, net::Protocol::Udp)?;
-        } else {
-            /* 
-                        warn!(
-                "{} {} {}", self.ctx.log(),
-                "Dropping UDP message to {}, as bridge is not .", addr
-            );connected
-            */
-        }
+        self.network.lock().unwrap().send(self.system_path.socket_address(), dst_addr, data);
         Ok(())
     }
 
     fn route_remote_tcp(
         &mut self,
-        addr: SocketAddr,
+        dst_addr: SocketAddr,
         data: DispatchData,
     ) -> Result<(), NetworkBridgeErr> {
-        //println!("ROUTE REMOTE TCP");
-
-        let state: &mut ConnectionState =
-            self.connections.entry(addr).or_insert(ConnectionState::New);
-        let next: Option<ConnectionState> = match *state {
-            ConnectionState::New => {
-                /*
-                debug!(
-                    "{} {}", self.ctx.log(),
-                    "No connection found; establishing and queuing frame"
-                ); */
-                self.queue_manager.enqueue_data(data, addr);
-
-                if let Some(ref mut bridge) = self.net_bridge {
-                    //debug!("{} {} {}", self.ctx.log(), "Establishing new connection to {:?}", addr);
-                    self.retry_map.insert(addr, 0); // Make sure we will re-request connection later
-                    bridge.connect(Transport::Tcp, addr).unwrap();
-                    Some(ConnectionState::Initializing)
-                } else {
-                    error!(self.ctx.log(), "No network bridge found; dropping message");
-                    None
-                }
-            }
-            ConnectionState::Connected(_) => {
-                if self.queue_manager.has_data(&addr) {
-                    self.queue_manager.enqueue_data(data, addr);
-
-                    if let Some(bridge) = &self.net_bridge {
-                        while let Some(queued_data) = self.queue_manager.pop_data(&addr) {
-                            bridge.route(addr, queued_data, net::Protocol::Tcp)?;
-                        }
-                    }
-                    None
-                } else {
-                    // Send frame
-                    if let Some(bridge) = &self.net_bridge {
-                        bridge.route(addr, data, net::Protocol::Tcp)?;
-                    }
-                    None
-                }
-            }
-            ConnectionState::Initializing => {
-                self.queue_manager.enqueue_data(data, addr);
-                None
-            }
-            ConnectionState::Closed(_) => {
-                self.queue_manager.enqueue_data(data, addr);
-                if let Some(bridge) = &self.net_bridge {
-                    self.retry_map.entry(addr).or_insert(0);
-                    bridge.connect(Tcp, addr)?;
-                }
-                Some(ConnectionState::Initializing)
-            }
-            ConnectionState::Lost(_) => {
-                // May be recovered...
-                self.queue_manager.enqueue_data(data, addr);
-                None
-            }
-            ConnectionState::Blocked => {
-                /* 
-                                warn!(
-                    self.ctx.log(),
-                    "Tried sending a message to a blocked connection: {:?}. Dropping message.",
-                    addr
-                );
-                */
-                None
-            }
-        };
-
-        if let Some(next) = next {
-            *state = next;
-        }
+        self.network.lock().unwrap().send(self.system_path.socket_address(), dst_addr, data);
         Ok(())
     }
 
@@ -827,10 +672,8 @@ impl SimulationNetworkDispatcher {
             }
         }
         let next_wakeup = self.reaper.strategy().curr();
-        /*debug!(
-            self.ctx().log(),
-            "Scheduling reaping at {:?}ms", next_wakeup
-        );*/
+
+        //debug!(self.ctx().log(), "Scheduling reaping at {:?} ms", next_wakeup);
 
         let mut retry_queue = VecDeque::new();
         for mut trash in self.garbage_buffers.drain(..) {
@@ -838,7 +681,7 @@ impl SimulationNetworkDispatcher {
                 retry_queue.push_back(trash);
             }
         }
-        // info!(self.ctx().log(), "tried to clean {} buffer(s)", retry_queue.len()); // manual verification in testing
+        info!(self.ctx().log(), "tried to clean {} buffer(s)", retry_queue.len()); // manual verification in testing
         self.garbage_buffers.append(&mut retry_queue);
 
         self.schedule_once(Duration::from_millis(next_wakeup), move |target, _id| {
@@ -847,17 +690,7 @@ impl SimulationNetworkDispatcher {
         });
     }
 
-    /*fn get_socket_addr(&self) -> &Option<SocketAddr>{
-        match self.net_bridge{
-            Some(bridge) => bridge.local_addr(),
-            None => todo!(),
-        }        
+    pub fn get_address(&self) -> SocketAddr{
+        self.address
     }
-
-    fn get_actor_store(&self) -> {
-        match self.net_bridge{
-            Some(bridge) => bridge.local_addr(),
-            None => todo!(),
-        }      
-    }*/
 }

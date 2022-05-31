@@ -13,6 +13,7 @@ mod paths;
 mod refs;
 pub use paths::*;
 pub use refs::*;
+use std::hash::Hash;
 
 /// Just a trait alias hack to avoid constantly writing `Debug+Send+'static`
 pub trait MessageBounds: fmt::Debug + Send + 'static

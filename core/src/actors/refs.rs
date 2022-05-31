@@ -1009,7 +1009,7 @@ impl<T> Receiver<T> for Recipient<T> {
 #[cfg(test)]
 mod tests {
 
-    use crate::prelude::*;
+    use crate::{prelude::*};
     use std::{convert::From, sync::Arc, time::Duration};
     use synchronoise::CountdownEvent;
 
