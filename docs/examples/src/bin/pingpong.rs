@@ -148,8 +148,17 @@ pub fn sim() {
     let sys2 = simulation.spawn_system(cfg2);
     let cfg1 = KompactConfig::default();
     let sys1 = simulation.spawn_system(cfg1);
-    let (ponger, path) = simulation.create_and_register(&sys2, Ponger::new);
-    let (pinger, _) = simulation.create_and_register(&sys1, move || Pinger::new(path));
+    
+    let (ponger, path) = simulation.create_and_register(
+        &sys2, 
+        Ponger::new, 
+        Duration::from_millis(1000)
+    );
+    let (pinger, _) = simulation.create_and_register(
+        &sys1, 
+        move || Pinger::new(path), 
+        Duration::from_millis(1000)
+    );
     
     sys2.start(&ponger);
     println!("start in main");

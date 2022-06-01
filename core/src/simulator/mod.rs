@@ -315,6 +315,7 @@ impl<T: 'static> SimulationScenario<T>{
         &mut self,
         sys: &KompactSystem,
         f: F,
+        register_timeout: Duration
     ) -> (Arc<Component<C>>, ActorPath)
     where
         F: FnOnce() -> C,
@@ -322,7 +323,7 @@ impl<T: 'static> SimulationScenario<T>{
     {
         self.set_scheduling_choice(SimulatedScheduling::Now);
         let (ponger, registration_future) = sys.create_and_register(f);
-        let path = registration_future.wait_expect(Duration::from_millis(1000), "actor never registered");
+        let path = registration_future.wait_expect(register_timeout, "actor never registered");
         self.set_scheduling_choice(SimulatedScheduling::Queue);
         (ponger, path)
     }
