@@ -323,9 +323,42 @@ impl<T: 'static> SimulationScenario<T>{
     {
         self.set_scheduling_choice(SimulatedScheduling::Now);
         let (ponger, registration_future) = sys.create_and_register(f);
-        let path = registration_future.wait_expect(register_timeout, "actor never registered");
+        let path = registration_future.wait_expect(register_timeout, "Failed to Register create_and_register");
         self.set_scheduling_choice(SimulatedScheduling::Queue);
         (ponger, path)
+    }
+
+    pub fn register_by_alias<A>(
+        &mut self,
+        sys: &KompactSystem,
+        c: &dyn DynActorRefFactory,
+        alias: A,
+        register_timeout: Duration
+    ) -> ActorPath
+    where
+        A: Into<String>,
+    {
+        /*self.inner.assert_active();
+        self.inner
+            .register_by_alias(c.dyn_ref(), false, alias.into())*/
+        self.set_scheduling_choice(SimulatedScheduling::Now);
+        let path = sys.register_by_alias(c, alias).wait_expect(register_timeout, "Failed to Register register_by_alias");
+        self.set_scheduling_choice(SimulatedScheduling::Queue);
+        path
+    }
+    
+    pub fn start_notify(
+        &mut self, 
+        sys: &KompactSystem, 
+        c: &Arc<impl AbstractComponent + ?Sized>, 
+        register_timeout: Duration
+    ) -> () {
+        self.set_scheduling_choice(SimulatedScheduling::Now);
+        let raft_comp_f = sys.start_notify(c);
+        raft_comp_f
+            .wait_timeout(register_timeout)
+            .expect("Failed start_notify");
+        self.set_scheduling_choice(SimulatedScheduling::Queue);
     }
 
     pub fn end_setup(&mut self) -> () {
