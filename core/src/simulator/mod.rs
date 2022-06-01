@@ -88,7 +88,7 @@ pub struct SimulationSchedulerData {
 impl SimulationSchedulerData {
     pub fn new() -> SimulationSchedulerData {
         SimulationSchedulerData {
-            scheduling: SimulatedScheduling::Now, 
+            scheduling: SimulatedScheduling::Queue, 
             queue: VecDeque::new(),
         }
     }
@@ -98,21 +98,21 @@ fn maybe_reschedule(c: Arc<dyn CoreContainer>) {
     match c.execute() {
         SchedulingDecision::Schedule => {
             if cfg!(feature = "use_local_executor") {
-                //println!("local?");
+                println!("local?");
                 let res = try_execute_locally(move || maybe_reschedule(c));
                 assert!(!res.is_err(), "Only run with Executors that can support local execute or remove the avoid_executor_lookups feature!");
             } else {
-                //println!("nonlocal?");
+                println!("Scheduled again");
                 let c2 = c.clone();
                 c.system().schedule(c2);
             }
         }
         SchedulingDecision::Resume => {
-            //println!("Resume");
+            println!("Resume");
             maybe_reschedule(c)
         },
         _ => {
-            //println!("Notn");
+            println!("Notn");
             ()
         },
     }
@@ -120,33 +120,73 @@ fn maybe_reschedule(c: Arc<dyn CoreContainer>) {
 
 impl Scheduler for SimulationScheduler {
     fn schedule(&self, c: Arc<dyn CoreContainer>) -> () {
-        /*println!("schedule: {:?}", std::thread::current().id());
+        /*let res = c.execute();
+        let add_to_queue = match res {
+            SchedulingDecision::NoWork | SchedulingDecision::Blocked => true,
+            SchedulingDecision::Resume | SchedulingDecision::Schedule => false,
+            SchedulingDecision::AlreadyScheduled => {
+                panic!("Don't know what to do with AlreadyScheduled here")
+            }
+        };
+        if add_to_queue {
+        }*/
 
-        match current().name() {
-            None => println!("SCHEDULE thread name"),
-            Some(thread_name) => {
-                println!("SCHEDULE Thread name: {}", thread_name)
-            },
-        }
+        /*println!("SOMETHING SCHEDULED");
+        if self.get_queue_len() > 0 {
+            println!("Something in queue, len {}", self.get_queue_len());
+            match self.pop_from_queue() {
+                Some(scheduled_component) => {
+                    maybe_reschedule(scheduled_component);
+                },
+                None => panic!("Should be a component scheduled"),
+            }
+        } else {
+            println!("Nothing in queue");
+            /*let res = c.execute();
+            let add_to_queue = match res {
+                SchedulingDecision::NoWork | SchedulingDecision::Blocked => false,
+                SchedulingDecision::Resume | SchedulingDecision::Schedule => true,
+                SchedulingDecision::AlreadyScheduled => {
+                    panic!("Don't know what to do with AlreadyScheduled here")
+                }
+            };
 
-        println!("schedule: {} name: {}", c.id(), c.type_name());*/
+            if add_to_queue {
+                let c2 = c.clone();
+                c.system().schedule(c2);
+            }*/
+
+            self.push_back_to_queue(c)
+        }*/
+        /*let res = c.execute();
+        let add_to_queue = match res {
+            SchedulingDecision::NoWork | SchedulingDecision::Blocked => false,
+            SchedulingDecision::Resume | SchedulingDecision::Schedule => true,
+            SchedulingDecision::AlreadyScheduled => {
+                panic!("Don't know what to do with AlreadyScheduled here")
+            }
+        };
+        if add_to_queue {
+            let c2 = c.clone();
+            self.schedule(c2)
+        }*/
 
         match self.get_scheduling() {
             SimulatedScheduling::Future => {
-                //println!("FUTURE");
                 maybe_reschedule(c);
-                //println!("AFTER FUTURE");
             },
             SimulatedScheduling::Now => {
-                //println!("NOW");
-                //println!("cid {}", c.id());
-                c.execute();
-                //println!("AFTER NOW");
+                match c.execute() {
+                    SchedulingDecision::Schedule | SchedulingDecision::Resume  => {
+                        let c2 = c.clone();
+                        c.system().schedule(c2);
+                    },
+                    SchedulingDecision::NoWork | SchedulingDecision::Blocked => (),
+                    SchedulingDecision::AlreadyScheduled => panic!("Already Scheduled"),
+                }
             },
             SimulatedScheduling::Queue => {
-                //println!("QUEUE");
                 self.push_back_to_queue(c);
-                //println!("AFTER QUEUE");
             },
         }
     }
@@ -179,6 +219,14 @@ impl SimulationScheduler {
 
     fn push_back_to_queue(&self, c: Arc<dyn CoreContainer>){
         self.0.as_ref().borrow_mut().queue.push_back(c);
+    }
+
+    fn pop_from_queue(&self) -> Option<Arc<dyn CoreContainer>>{
+        self.0.as_ref().borrow_mut().queue.pop_front()
+    }
+
+    fn get_queue_len(&self) -> usize{
+        self.0.as_ref().borrow().queue.len()
     }
 }
 
@@ -249,6 +297,7 @@ impl<T: 'static> SimulationScenario<T>{
     }
 
     pub fn spawn_system(&mut self, cfg: KompactConfig) -> KompactSystem {
+        self.set_scheduling_choice(SimulatedScheduling::Now);
         let mut mut_cfg = cfg;
         KompactConfig::set_config_value(&mut mut_cfg, &config_keys::system::THREADS, 1usize);
         let scheduler = self.scheduler.clone();
@@ -258,7 +307,24 @@ impl<T: 'static> SimulationScenario<T>{
         let dispatcher = SimulationNetworkConfig::default().build(self.network.clone());
         mut_cfg.system_components(DeadletterBox::new, dispatcher);
         let system = mut_cfg.build().expect("system");
+        self.set_scheduling_choice(SimulatedScheduling::Queue);
         system
+    }
+
+    pub fn create_and_register<C, F>(
+        &mut self,
+        sys: &KompactSystem,
+        f: F,
+    ) -> (Arc<Component<C>>, ActorPath)
+    where
+        F: FnOnce() -> C,
+        C: ComponentDefinition + 'static,
+    {
+        self.set_scheduling_choice(SimulatedScheduling::Now);
+        let (ponger, registration_future) = sys.create_and_register(f);
+        let path = registration_future.wait_expect(Duration::from_millis(1000), "actor never registered");
+        self.set_scheduling_choice(SimulatedScheduling::Queue);
+        (ponger, path)
     }
 
     pub fn end_setup(&mut self) -> () {
@@ -300,15 +366,11 @@ impl<T: 'static> SimulationScenario<T>{
     pub fn simulate_step(&mut self) -> () {
         match self.get_work(){
             Some(w) => {
-                //println!("EXECUTING SOMETHING!!!!!!!!!!!!!!!!");
                 let res = w.execute();
-                //println!("helo");
                 match res {
-                    SchedulingDecision::Schedule => self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
-                    SchedulingDecision::AlreadyScheduled => todo!(),
-                    SchedulingDecision::NoWork => (),
-                    SchedulingDecision::Blocked => todo!(),
-                    SchedulingDecision::Resume => todo!(),
+                    SchedulingDecision::Schedule | SchedulingDecision::Resume => self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),                    
+                    SchedulingDecision::NoWork | SchedulingDecision::Blocked => (),
+                    SchedulingDecision::AlreadyScheduled => panic!("Already Scheduled"),
                 }
             },
             None => ()
