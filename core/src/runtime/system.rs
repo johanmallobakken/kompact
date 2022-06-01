@@ -89,6 +89,7 @@ impl KompactSystem {
             config: Arc::new(config),
             scheduler,
         };
+        println!("preprom");
         let (dead_prom, dead_f) = utils::promise();
         let (disp_prom, disp_f) = utils::promise();
         let system_components = (*sc_builder)(&sys, dead_prom, disp_prom);
@@ -99,6 +100,7 @@ impl KompactSystem {
         let timeout = std::time::Duration::from_millis(50);
         let mut wait_for: Option<KFuture<()>> = Some(dead_f);
         while wait_for.is_some() {
+            println!("Wait for is some");
             if sys.inner.is_poisoned() {
                 return Err(KompactError::Poisoned);
             }
@@ -108,8 +110,12 @@ impl KompactSystem {
                 Err(WaitErr::PromiseDropped(e)) => return Err(KompactError::from_other(e)),
             }
         }
+
+        println!("after while");
+
         let mut wait_for: Option<KFuture<()>> = Some(disp_f);
-            while wait_for.is_some() {
+        while wait_for.is_some() {
+                println!("Wait for is some 2");
 
             if sys.inner.is_poisoned() {
                 return Err(KompactError::Poisoned);

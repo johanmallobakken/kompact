@@ -65,7 +65,7 @@ impl DedicatedThreadScheduler {
         let stop2 = stop.clone();
         let stopped = Arc::new(AtomicBool::new(false));
         let stopped2 = stopped.clone();
-        //println!("MAKING THREAD:DedicatedThreadScheduler 2");
+        
         thread::Builder::new()
             .name("dedicated-pinned-component".to_string())
             .spawn(move || {

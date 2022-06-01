@@ -63,7 +63,8 @@ impl Ponger {
 
 impl ComponentLifecycle for Pinger {
     fn on_start(&mut self) -> Handled {
-        info!(self.log(), "Pinger started!");
+        //info!(self.log(), "Pinger started!");
+        println!("Pinger started!!!!");
         self.actor_path.tell((Ping, Serde), self);
         Handled::Ok
     }
@@ -72,7 +73,8 @@ impl ComponentLifecycle for Pinger {
 
 impl ComponentLifecycle for Ponger {
     fn on_start(&mut self) -> Handled {
-        info!(self.log(), "Ponger started!");
+        //info!(self.log(), "Ponger started!");
+        println!("Ponger started!!!!");
         Handled::Ok
     }
 }
@@ -112,13 +114,12 @@ impl Actor for Ponger {
     }
 
     fn receive_network(&mut self, msg: NetMessage) -> Handled {
-
         let sender = msg.sender;
         match msg.data.try_deserialise::<Ping, Serde>() {
             Ok(_ping) => {
                 self.counter += 1;
                 println!("!!! RECIEVED PING {} IN PONGER !!!", self.counter);
-                info!(self.log(), "RECIEVED PING {} IN PONGER", self.counter);
+                //info!(self.log(), "RECIEVED PING {} IN PONGER", self.counter);
                 sender.tell((Pong, Serde), self)
             }
             Err(e) => warn!(self.log(), "Invalid data: {:?}", e),
@@ -143,19 +144,12 @@ impl GetState<GlobalState> for Ponger {
 pub fn sim() {
     let mut simulation: SimulationScenario<GlobalState> = SimulationScenario::new();
 
-    let mut cfg2 = KompactConfig::default();
+    let cfg2 = KompactConfig::default();
     let sys2 = simulation.spawn_system(cfg2);
-
-    let mut cfg1 = KompactConfig::default();
+    let cfg1 = KompactConfig::default();
     let sys1 = simulation.spawn_system(cfg1);
-
-    let (ponger, registration_future) = sys2.create_and_register(Ponger::new);
-    let path = registration_future.wait_expect(Duration::from_millis(1000), "actor never registered");
-
-    let (pinger, registration_future) = sys1.create_and_register(move || Pinger::new(path));
-    registration_future.wait_expect(Duration::from_millis(1000), "actor never registered");
-
-    simulation.end_setup();
+    let (ponger, path) = simulation.create_and_register(&sys2, Ponger::new);
+    let (pinger, _) = simulation.create_and_register(&sys1, move || Pinger::new(path));
     
     sys2.start(&ponger);
     println!("start in main");
@@ -203,22 +197,11 @@ pub fn sim() {
     println!("start in main 32 {:?}", simulation.simulate_step());
 
     println!("done simulation steps");
-
-    //simulation.simulate_to_completion();
-    //println!("THREAD ID main pp: {:?}", std::thread::current().id());
-
-    //std::thread::sleep(core::time::Duration::from_millis(1000));
-
-    //simulation.set_scheduling_choice(SimulatedScheduling::Now);
-
-    //println!("FUTURE EXECUTOR FROM NOW");
     
     simulation.shutdown_system(sys1);
-    //sys1.shutdown_async();
     println!("shutdown");
 
     simulation.shutdown_system(sys2);
-    //sys2.shutdown_async();
     println!("shutdown 2");
 } 
 
