@@ -16,7 +16,8 @@ use std::{
 struct Pinger {
     ctx: ComponentContext<Self>,
     actor_path: ActorPath,
-    counter: u64
+    counter: u64,
+    timer: Option<ScheduledTimer>,
 }
 
 #[derive(ComponentDefinition)]
@@ -47,7 +48,8 @@ impl Pinger {
         Pinger {
             ctx: ComponentContext::uninitialised(),
             actor_path: actor_path,
-            counter: 0
+            counter: 0,
+            timer: None,
         }
     }
 }
@@ -65,6 +67,7 @@ impl ComponentLifecycle for Pinger {
     fn on_start(&mut self) -> Handled {
         //info!(self.log(), "Pinger started!");
         println!("Pinger started!!!!");
+        self.start_timer();
         self.actor_path.tell((Ping, Serde), self);
         Handled::Ok
     }
@@ -102,6 +105,21 @@ impl Actor for Pinger {
             }
             Err(e) => warn!(self.log(), "Invalid data: {:?}", e),
         }
+        Handled::Ok
+    }
+}
+
+impl Pinger {
+    fn start_timer(&mut self){
+        let ready_timer = self.schedule_periodic(Duration::from_millis(0), Duration::from_millis(1), move |c, _| {
+            println!("SCHEDULED PERIODICCCCCCC ready_timer");
+            c.on_ready()
+        });
+        self.timer = Some(ready_timer);
+    }
+
+    fn on_ready(&mut self) -> Handled{
+        println!("TIMEOUT IN PINGERRRRR");
         Handled::Ok
     }
 }
@@ -180,13 +198,13 @@ pub fn sim() {
     println!("start in main 13 {:?}", simulation.simulate_step());
     println!("start in main 14 {:?}", simulation.simulate_step());
 
-    simulation.break_link(sys1.clone(), sys2.clone());
+    //simulation.break_link(sys1.clone(), sys2.clone());
 
     println!("start in main 15 {:?}", simulation.simulate_step());
     println!("start in main 16 {:?}", simulation.simulate_step());
     println!("start in main 17 {:?}", simulation.simulate_step());
 
-    simulation.restore_link(sys1.clone(), sys2.clone());
+    //simulation.restore_link(sys1.clone(), sys2.clone());
 
 
     println!("start in main 18 {:?}", simulation.simulate_step());
@@ -240,5 +258,6 @@ pub fn nonsim() {
 }
 
 pub fn main(){
+    //nonsim();
     sim();
 }

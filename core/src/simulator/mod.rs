@@ -3,7 +3,7 @@ use self::{simulation_network::SimulationNetwork, simulation_network_dispatcher:
 use super::*;
 use arc_swap::ArcSwap;
 use executors::*;
-use hierarchical_hash_wheel_timer::Timer;
+use hierarchical_hash_wheel_timer::{Timer, simulation::SimulationStep};
 use messaging::{DispatchEnvelope, RegistrationResult};
 use prelude::{NetworkConfig, NetworkStatusPort};
 use rustc_hash::FxHashMap;
@@ -237,7 +237,7 @@ unsafe impl Sync for SimulationTimer {}
 unsafe impl Send for SimulationTimer {}
 
 struct SimulationTimerData{
-    inner: timer::SimulationTimer,
+    pub inner: timer::SimulationTimer,
 }
 
 impl SimulationTimerData {
@@ -308,6 +308,7 @@ impl<T: 'static> SimulationScenario<T>{
         mut_cfg.system_components(DeadletterBox::new, dispatcher);
         let system = mut_cfg.build().expect("system");
         self.set_scheduling_choice(SimulatedScheduling::Queue);
+        self.systems.push(system.clone());
         system
     }
 
@@ -389,6 +390,10 @@ impl<T: 'static> SimulationScenario<T>{
         self.scheduler.0.as_ref().borrow_mut().queue.pop_front()
     }
 
+    fn next_timer(&mut self) -> SimulationStep{
+        self.timer.0.as_ref().borrow_mut().inner.next()
+    }
+
     /*fn register_system_to_simulated_network(&mut self, dispatcher: SimulationNetworkDispatcher) -> () {
         self.network.lock().unwrap().register_system(dispatcher., actor_store)
     }*/
@@ -398,6 +403,9 @@ impl<T: 'static> SimulationScenario<T>{
     }
 
     pub fn simulate_step(&mut self) -> () {
+
+        self.next_timer();
+        
         match self.get_work(){
             Some(w) => {
                 let res = w.execute();
