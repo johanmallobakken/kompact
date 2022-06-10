@@ -362,6 +362,19 @@ impl<T: 'static> SimulationScenario<T>{
         self.set_scheduling_choice(SimulatedScheduling::Queue);
     }
 
+    pub fn wait_future(
+        &mut self, 
+        future: KFuture<T>
+    ) -> T 
+    where
+        T: Send + Sized
+    {
+        self.set_scheduling_choice(SimulatedScheduling::Now);
+        let res = future.wait();
+        self.set_scheduling_choice(SimulatedScheduling::Queue);
+        res
+    }
+
     pub fn end_setup(&mut self) -> () {
         self.scheduler.0.as_ref().borrow_mut().scheduling = SimulatedScheduling::Queue;
     }
