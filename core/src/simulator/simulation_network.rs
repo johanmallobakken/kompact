@@ -116,7 +116,7 @@ impl SimulationNetwork {
     }
 
     pub fn send(&mut self, src: SocketAddr, dst: SocketAddr, data: DispatchData) {
-        println!("senddd addr1: {} addr2: {} clogged: {}", src.to_string(), dst.to_string(), self.clogged_link.contains(&(src, dst)));
+        //println!("senddd addr1: {} addr2: {} clogged: {}", src.to_string(), dst.to_string(), self.clogged_link.contains(&(src, dst)));
         //println!("contains clogged link?: {} ", self.clogged_link.contains(&(src, dst)));
         assert!(self.endpoints.contains_key(&src));
         if !self.endpoints.contains_key(&dst)
