@@ -152,7 +152,6 @@ impl GetState<GlobalState> for Pinger {
     }
 }
 
-
 impl GetState<GlobalState> for Ponger {
     fn get_state(&self) -> GlobalState {
         todo!();
