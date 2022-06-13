@@ -330,6 +330,7 @@ impl Dispatcher for SimulationNetworkDispatcher {
     fn network_status_port(&mut self) -> &mut ProvidedPort<NetworkStatusPort> {
         //&mut self.network_status_port
         todo!();
+        //println!("network status port");
     }
 }
 
@@ -427,11 +428,13 @@ impl SimulationNetworkDispatcher {
     }
 
     fn stop(&mut self) -> (){
-        todo!();
+        //todo!();
+        println!("stop");
     }
 
     fn kill(&mut self) -> (){
-        todo!();
+        //todo!();
+        println!("kill");
     }
 
     fn schedule_retries(&mut self) {
