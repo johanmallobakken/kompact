@@ -370,6 +370,11 @@ impl<T: 'static> SimulationScenario<T>{
         K: Send + Sized
     {
         self.set_scheduling_choice(SimulatedScheduling::Now);
+
+        while self.scheduler.0.as_ref().borrow().queue.len() > 0 {
+            self.simulate_step();
+        }
+
         let res = future.wait();
         self.set_scheduling_choice(SimulatedScheduling::Queue);
         res
@@ -423,7 +428,7 @@ impl<T: 'static> SimulationScenario<T>{
             Some(w) => {
                 let res = w.execute();
                 match res {
-                    SchedulingDecision::Schedule | SchedulingDecision::Resume => self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),                    
+                    SchedulingDecision::Schedule | SchedulingDecision::Resume => self.scheduler.schedule(w), //self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),                    
                     SchedulingDecision::NoWork | SchedulingDecision::Blocked => (),
                     SchedulingDecision::AlreadyScheduled => panic!("Already Scheduled"),
                 }
