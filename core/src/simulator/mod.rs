@@ -276,7 +276,7 @@ pub struct SimulationScenario<T>{
     timer: SimulationTimer,
     network: Arc<Mutex<SimulationNetwork>>,
     monitored_invariants: Vec<Arc<dyn Invariant<T>>>,
-    monitored_actors: Vec<Arc<dyn GetState<T>>>
+    monitored_actors: Vec<Arc<dyn GetState<T>>>,
 }
 
 impl<T: 'static> SimulationScenario<T>{
@@ -327,10 +327,10 @@ impl<T: 'static> SimulationScenario<T>{
         C: ComponentDefinition + 'static,
     {
         self.set_scheduling_choice(SimulatedScheduling::Now);
-        let (ponger, registration_future) = sys.create_and_register(f);
+        let (component, registration_future) = sys.create_and_register(f);
         let path = registration_future.wait_expect(register_timeout, "Failed to Register create_and_register");
         self.set_scheduling_choice(SimulatedScheduling::Queue);
-        (ponger, path)
+        (component, path)
     }
 
     pub fn register_by_alias<A>(

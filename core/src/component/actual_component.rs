@@ -50,7 +50,7 @@ pub fn default_recovery_function(ctx: FaultContext) -> RecoveryHandler {
 pub struct Component<CD: ComponentTraits> {
     core: ComponentCore,
     custom_scheduler: Option<dedicated_scheduler::DedicatedThreadScheduler>,
-    pub(crate) mutable_core: Mutex<ComponentMutableCore<CD>>,
+    pub mutable_core: Mutex<ComponentMutableCore<CD>>,
     ctrl_queue: ConcurrentQueue<ControlEvent>,
     msg_queue: TypedMsgQueue<CD::Message>,
     // system components don't have supervision

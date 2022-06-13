@@ -215,8 +215,8 @@ impl CoreContainer for FakeCoreContainer {
     }
 }
 
-pub(crate) struct ComponentMutableCore<C> {
-    pub(crate) definition: C,
+pub struct ComponentMutableCore<C> {
+    pub definition: C,
     skip: usize,
 }
 impl<C> ComponentMutableCore<C> {
