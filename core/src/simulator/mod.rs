@@ -192,11 +192,13 @@ impl Scheduler for SimulationScheduler {
     }
 
     fn shutdown_async(&self) -> (){
-        todo!();
+        //todo!();
+        println!("shutdown_async");
     }
 
     fn shutdown(&self) -> Result<(), String>{
-        todo!();
+        println!("shutdown");
+        Ok(())
     }
 
     fn box_clone(&self) -> Box<dyn Scheduler>{
@@ -204,11 +206,13 @@ impl Scheduler for SimulationScheduler {
     }
 
     fn poison(&self) -> (){
-        todo!();
+        //todo!();
+        println!("poison")
     }
 
     fn spawn(&self, future: futures::future::BoxFuture<'static, ()>) -> (){
-        todo!();
+        //todo!();
+        println!("spawn")
     }
 }
 
