@@ -82,9 +82,8 @@ impl ComponentLifecycle for Ponger {
     }
 }
 
-enum GlobalState {
-    Pinger { count: i32},
-    Ponger { count: i32},
+struct PingPongState {
+    count: u64
 }
 
 impl Actor for Pinger {
@@ -146,20 +145,25 @@ impl Actor for Ponger {
     }
 }
 
-impl GetState<GlobalState> for Pinger {
-    fn get_state(&self) -> GlobalState {
-        todo!();
+impl GetState<PingPongState> for Pinger {
+    fn get_state(&self) -> PingPongState {
+        PingPongState {
+            count: self.counter
+        }
     }
 }
 
-impl GetState<GlobalState> for Ponger {
-    fn get_state(&self) -> GlobalState {
-        todo!();
+impl GetState<PingPongState> for Ponger {
+    fn get_state(&self) -> PingPongState {
+        PingPongState {
+            count: self.counter
+        }
     }
 }
+
 
 pub fn sim() {
-    let mut simulation: SimulationScenario<GlobalState> = SimulationScenario::new();
+    let mut simulation: SimulationScenario<PingPongState> = SimulationScenario::new();
 
     let cfg2 = KompactConfig::default();
     let sys2 = simulation.spawn_system(cfg2);

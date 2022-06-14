@@ -270,6 +270,18 @@ lazy_static! {
     static ref GLOBAL_STATE: Option<GlobalState<T>>  = Mutex::new(0);
 }*/
 
+struct SimualtionState<T>
+where T: 'static
+{
+    state: T
+}
+
+impl<T> SimualtionState<T>{
+    pub fn new(state: T){
+
+    }
+}
+
 pub struct SimulationScenario<T>{
     systems: Vec<KompactSystem>,
     scheduler: SimulationScheduler,
@@ -394,6 +406,10 @@ impl<T: 'static> SimulationScenario<T>{
 
     pub fn restore_link(&mut self, sys1: KompactSystem, sys2: KompactSystem) -> () {
         self.network.lock().unwrap().unclog_link(sys1.system_path().socket_address(), sys2.system_path().socket_address());
+    }
+
+    pub fn clog_system(&mut self, sys: KompactSystem) -> () {
+        self.network.lock().unwrap().clog(sys.system_path().socket_address());
     }
 
     pub fn shutdown_system(&self, sys: KompactSystem) -> (){
