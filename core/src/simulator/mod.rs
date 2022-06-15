@@ -455,8 +455,10 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
 
     fn write_states_to_file(&mut self) {
         self.state_file.write(self.simulation_step_count.to_string().as_bytes()).expect("Unable to write file");
+        self.state_file.write("\n".as_bytes()).expect("Unable to write file");
         for actor in &self.monitored_actors {
             self.state_file.write(actor.get_state().to_string().as_bytes()).expect("Unable to write file");
+            self.state_file.write("\n".as_bytes()).expect("Unable to write file");
         }
     }
 
