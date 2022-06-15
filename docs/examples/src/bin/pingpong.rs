@@ -3,6 +3,7 @@ use kompact::{prelude::*, serde_serialisers::*};
 use serde::{Deserialize, Serialize};
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
+use std::fmt::Display;
 use std::rc::Rc;
 use std::sync::Mutex;
 use std::{
@@ -82,8 +83,15 @@ impl ComponentLifecycle for Ponger {
     }
 }
 
+#[derive(Debug)]
 struct PingPongState {
     count: u64
+}
+
+impl Display for PingPongState{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl Actor for Pinger {

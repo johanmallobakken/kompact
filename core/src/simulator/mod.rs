@@ -7,7 +7,7 @@ use hierarchical_hash_wheel_timer::{Timer, simulation::SimulationStep};
 use messaging::{DispatchEnvelope, RegistrationResult};
 use prelude::{NetworkConfig, NetworkStatusPort};
 use rustc_hash::FxHashMap;
-use std::fmt::Debug;
+use std::{fmt::{Debug, Display}, fs};
 pub mod simulation_network_dispatcher;
 pub mod simulation_network;
 pub mod state;
@@ -293,7 +293,7 @@ pub struct SimulationScenario<T>{
     simulation_step_count: u64,
 }
 
-impl<T: Debug + 'static> SimulationScenario<T>{
+impl<T: Debug + Display + 'static> SimulationScenario<T>{
     pub fn new() -> SimulationScenario<T>{
         SimulationScenario {
             systems: Vec::new(),
@@ -451,12 +451,20 @@ impl<T: Debug + 'static> SimulationScenario<T>{
         }
     }
 
+    fn write_states_to_file(&self) {
+        fs::write("/tmp/statechanges", self.simulation_step_count.to_string()).expect("Unable to write file");
+        for actor in &self.monitored_actors {
+            fs::write("/tmp/statechanges", actor.get_state().to_string()).expect("Unable to write file");
+        }
+    }
+
 
     pub fn simulate_step(&mut self) -> () {
 
-        println!("Step ID: {}", self.simulation_step_count);
+        //println!("Step ID: {}", self.simulation_step_count);
+        //self.print_all_actor_states();
+        self.write_states_to_file();
         self.simulation_step_count += 1;
-        self.print_all_actor_states();
 
         self.next_timer();
         
