@@ -455,6 +455,10 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         }
     }
 
+    pub fn print_simulation_step_count(&self){
+        println!("Simulation step count: {}", self.simulation_step_count)
+    }
+
     fn write_states_to_file(&mut self) {
 
         let mut actor_states_string = String::new();
