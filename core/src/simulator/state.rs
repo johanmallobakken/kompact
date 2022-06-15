@@ -11,7 +11,7 @@ where T: Debug
     fn get_state(&self) -> T;
 }
 
-pub trait Invariant<T: Any>{
+pub trait Invariant<T>{
     fn check(&self, state: Vec<T>) -> Result<(), SimulationError>;
 }
 
