@@ -261,6 +261,8 @@ pub mod prelude {
             SimulatedScheduling,
             GetState,
             Invariant,
+            SimulationError,
+            ProgressCounter,
             simulation_network_dispatcher::{
                 SimulationNetworkConfig,
                 SimulationNetworkDispatcher

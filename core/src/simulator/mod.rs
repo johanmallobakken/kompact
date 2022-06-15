@@ -25,9 +25,8 @@ use crate::{
 
 pub use state::GetState;
 pub use state::Invariant;
-
-use state::ProgressCounter;
-use state::SimulationError;
+pub use state::SimulationError;
+pub use state::ProgressCounter;
 
 use std::{
     collections::{
