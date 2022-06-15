@@ -471,6 +471,8 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
             self.state_file.write(step_count_string.as_bytes()).expect("Unable to write file");
             self.state_file.write(actor_states_string.as_bytes()).expect("Unable to write file");
         }
+
+        self.prev_state_string = actor_states_string;
     }
 
 
