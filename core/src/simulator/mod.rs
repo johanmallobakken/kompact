@@ -292,6 +292,7 @@ pub struct SimulationScenario<T>{
     monitored_actors: Vec<Arc<dyn GetState<T>>>,
     simulation_step_count: u64,
     state_file: File,
+    prev_state_string: String
 }
 
 impl<T: Debug + Display + 'static> SimulationScenario<T>{
@@ -305,7 +306,8 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
             monitored_actors: Vec::new(),
             monitored_invariants: Vec::new(),
             simulation_step_count: 0,
-            state_file: File::create("state.txt").unwrap()
+            state_file: File::create("state.txt").unwrap(),
+            prev_state_string: String::new()
         }
     }
 
@@ -454,11 +456,20 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
     }
 
     fn write_states_to_file(&mut self) {
-        self.state_file.write(self.simulation_step_count.to_string().as_bytes()).expect("Unable to write file");
-        self.state_file.write("\n".as_bytes()).expect("Unable to write file");
+
+        let mut actor_states_string = String::new();
+
         for actor in &self.monitored_actors {
-            self.state_file.write(actor.get_state().to_string().as_bytes()).expect("Unable to write file");
-            self.state_file.write("\n".as_bytes()).expect("Unable to write file");
+            actor_states_string.push_str(&actor.get_state().to_string());
+            actor_states_string.push_str("\n");
+        }
+
+        if actor_states_string != self.prev_state_string {
+            let mut step_count_string = self.simulation_step_count.to_string();
+            step_count_string.push_str("\n");
+
+            self.state_file.write(step_count_string.as_bytes()).expect("Unable to write file");
+            self.state_file.write(actor_states_string.as_bytes()).expect("Unable to write file");
         }
     }
 
