@@ -24,8 +24,8 @@ use crate::{
 };
 
 pub use state::GetState;
+pub use state::Invariant;
 
-use state::Invariant;
 use state::ProgressCounter;
 use state::SimulationError;
 

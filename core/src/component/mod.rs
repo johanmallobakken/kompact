@@ -1,5 +1,6 @@
 use hocon::Hocon;
 use simulator::GetState;
+use simulator::Invariant;
 use std::{
     cell::{RefCell, UnsafeCell},
     fmt,

@@ -260,6 +260,7 @@ pub mod prelude {
             SimulationScenario,
             SimulatedScheduling,
             GetState,
+            Invariant,
             simulation_network_dispatcher::{
                 SimulationNetworkConfig,
                 SimulationNetworkDispatcher
