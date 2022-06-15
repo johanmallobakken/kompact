@@ -318,6 +318,11 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         Ok(())
     }
 
+    fn check_invariant_on_index(&self, idx: usize) -> Result<(), SimulationError> {
+        let t_vec: Vec<T> = self.monitored_actors.iter().map(|actor| actor.get_state()).collect();
+        self.monitored_invariants.get(idx).unwrap().check(t_vec)
+    }
+
     pub fn spawn_system(&mut self, cfg: KompactConfig) -> KompactSystem {
         self.set_scheduling_choice(SimulatedScheduling::Now);
         let mut mut_cfg = cfg;
