@@ -290,6 +290,7 @@ pub struct SimulationScenario<T>{
     network: Arc<Mutex<SimulationNetwork>>,
     monitored_invariants: Vec<Arc<dyn Invariant<T>>>,
     monitored_actors: Vec<Arc<dyn GetState<T>>>,
+    simulation_step_count: u64,
 }
 
 impl<T: Debug + 'static> SimulationScenario<T>{
@@ -302,6 +303,7 @@ impl<T: Debug + 'static> SimulationScenario<T>{
             network: Arc::new(Mutex::new(SimulationNetwork::new())),
             monitored_actors: Vec::new(),
             monitored_invariants: Vec::new(),
+            simulation_step_count: 0,
         }
     }
 
@@ -443,11 +445,18 @@ impl<T: Debug + 'static> SimulationScenario<T>{
         self.network.clone()
     }
 
-    pub fn simulate_step(&mut self) -> () {
-
+    fn print_all_actor_states(&self) {
         for actor in &self.monitored_actors{
             println!("{:?}", actor.get_state());
         }
+    }
+
+
+    pub fn simulate_step(&mut self) -> () {
+
+        println!("Step ID: {}", self.simulation_step_count);
+        self.simulation_step_count += 1;
+        self.print_all_actor_states();
 
         self.next_timer();
         
