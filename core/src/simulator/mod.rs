@@ -515,8 +515,9 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
     //State related
 
 
-    pub fn monitor_invariant(&mut self, invariant: Arc<dyn Invariant<T>>) {
+    pub fn monitor_invariant(&mut self, invariant: Arc<dyn Invariant<T>>) -> usize {
         self.monitored_invariants.push(invariant);
+        return self.monitor_invariants.len() - 1
     }
     pub fn monitor_actor(&mut self, actor: Arc<dyn GetState<T>>) {
         self.monitored_actors.push(actor);
