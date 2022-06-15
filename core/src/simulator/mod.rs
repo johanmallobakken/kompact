@@ -7,6 +7,7 @@ use hierarchical_hash_wheel_timer::{Timer, simulation::SimulationStep};
 use messaging::{DispatchEnvelope, RegistrationResult};
 use prelude::{NetworkConfig, NetworkStatusPort};
 use rustc_hash::FxHashMap;
+use std::fmt::Debug;
 pub mod simulation_network_dispatcher;
 pub mod simulation_network;
 pub mod state;
@@ -291,7 +292,7 @@ pub struct SimulationScenario<T>{
     monitored_actors: Vec<Arc<dyn GetState<T>>>,
 }
 
-impl<T: 'static> SimulationScenario<T>{
+impl<T: Debug + 'static> SimulationScenario<T>{
     pub fn new() -> SimulationScenario<T>{
         SimulationScenario {
             systems: Vec::new(),
@@ -340,6 +341,8 @@ impl<T: 'static> SimulationScenario<T>{
     {
         self.set_scheduling_choice(SimulatedScheduling::Now);
         let (component, registration_future) = sys.create_and_register(f);
+
+        //self.monitor_actor(actor)
         let path = registration_future.wait_expect(register_timeout, "Failed to Register create_and_register");
         self.set_scheduling_choice(SimulatedScheduling::Queue);
         (component, path)
@@ -441,6 +444,10 @@ impl<T: 'static> SimulationScenario<T>{
     }
 
     pub fn simulate_step(&mut self) -> () {
+
+        for actor in &self.monitored_actors{
+            println!("{:?}", actor.get_state());
+        }
 
         self.next_timer();
         

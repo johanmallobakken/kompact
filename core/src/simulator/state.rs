@@ -5,7 +5,9 @@ use std::{
 
 use crate::prelude::*;
 
-pub trait GetState<T>{
+pub trait GetState<T>
+where T: Debug
+{
     fn get_state(&self) -> T;
 }
 
