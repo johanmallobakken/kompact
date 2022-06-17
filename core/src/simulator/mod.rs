@@ -453,15 +453,18 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         self.network.clone()
     }
 
-    fn print_all_actor_states(&self) {
+    pub fn get_all_actor_states(&self) -> Vec<T>{
+        let mut states: Vec<T> = vec![];
         for actor in &self.monitored_actors{
-            println!("{:?}", actor.get_state());
+            states.push(actor.get_state());
         }
+        states
     }
 
-    pub fn print_simulation_step_count(&self){
-        println!("Simulation step count: {}", self.simulation_step_count)
+    pub fn get_simulation_step_count(&self) -> u64{
+        self.simulation_step_count
     }
+
 
     fn write_states_to_file(&mut self) {
 
