@@ -465,7 +465,6 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         self.simulation_step_count
     }
 
-
     fn write_states_to_file(&mut self) {
 
         let mut actor_states_string = String::new();

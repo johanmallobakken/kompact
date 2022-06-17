@@ -684,7 +684,7 @@ impl SimulationNetworkDispatcher {
                 retry_queue.push_back(trash);
             }
         }
-        info!(self.ctx().log(), "tried to clean {} buffer(s)", retry_queue.len()); // manual verification in testing
+        //info!(self.ctx().log(), "tried to clean {} buffer(s)", retry_queue.len()); // manual verification in testing
         self.garbage_buffers.append(&mut retry_queue);
 
         self.schedule_once(Duration::from_millis(next_wakeup), move |target, _id| {
