@@ -413,15 +413,15 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         self.scheduler.0.as_ref().borrow_mut().scheduling = SimulatedScheduling::Queue;
     }
     
-    pub fn break_link(&mut self, sys1: KompactSystem, sys2: KompactSystem) -> () {
+    pub fn break_link(&mut self, sys1: &KompactSystem, sys2: &KompactSystem) -> () {
         self.network.lock().unwrap().clog_link(sys1.system_path().socket_address(), sys2.system_path().socket_address());
     }
 
-    pub fn restore_link(&mut self, sys1: KompactSystem, sys2: KompactSystem) -> () {
+    pub fn restore_link(&mut self, sys1: &KompactSystem, sys2: &KompactSystem) -> () {
         self.network.lock().unwrap().unclog_link(sys1.system_path().socket_address(), sys2.system_path().socket_address());
     }
 
-    pub fn clog_system(&mut self, sys: KompactSystem) -> () {
+    pub fn clog_system(&mut self, sys: &KompactSystem) -> () {
         self.network.lock().unwrap().clog(sys.system_path().socket_address());
     }
 
