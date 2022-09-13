@@ -463,7 +463,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         let next_res = self.timer.0.as_ref().borrow_mut().inner.next();
         let post_next = self.timer.0.as_ref().borrow_mut().inner.current_time();
         let diff = post_next - pre_next;
-        println!("timer pre {} post {} diff {}", pre_next, post_next, diff);
+        //println!("timer pre {} post {} diff {}", pre_next, post_next, diff);
         next_res
     }
 
