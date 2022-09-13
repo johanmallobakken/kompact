@@ -286,6 +286,7 @@ impl<T> SimualtionState<T>{
     }
 }
 
+#[derive(Clone)]
 pub struct SimulationScenario<T>{
     systems: Vec<KompactSystem>,
     scheduler: SimulationScheduler,
@@ -294,7 +295,7 @@ pub struct SimulationScenario<T>{
     monitored_invariants: Vec<Arc<dyn Invariant<T>>>,
     monitored_actors: Vec<Arc<dyn GetState<T>>>,
     simulation_step_count: u64,
-    state_file: File,
+    state_file: Rc<RefCell<File>>,
     prev_state_string: String
 }
 
@@ -309,7 +310,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
             monitored_actors: Vec::new(),
             monitored_invariants: Vec::new(),
             simulation_step_count: 0,
-            state_file: File::create("state.txt").unwrap(),
+            state_file: Rc::new(RefCell::new(File::create("state.txt").unwrap())),
             prev_state_string: String::new()
         }
     }
@@ -487,8 +488,8 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
             let mut step_count_string = self.simulation_step_count.to_string();
             step_count_string.push_str("\n");
 
-            self.state_file.write(step_count_string.as_bytes()).expect("Unable to write file");
-            self.state_file.write(actor_states_string.as_bytes()).expect("Unable to write file");
+            self.state_file.borrow_mut().write(step_count_string.as_bytes()).expect("Unable to write file");
+            self.state_file.borrow_mut().write(actor_states_string.as_bytes()).expect("Unable to write file");
         }
 
         self.prev_state_string = actor_states_string;
