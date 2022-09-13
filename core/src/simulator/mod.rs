@@ -328,6 +328,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
     }
 
     pub fn spawn_system(&mut self, cfg: KompactConfig) -> KompactSystem {
+        self.set_scheduling_choice(SimulatedScheduling::Now);
         let mut mut_cfg = cfg;
         KompactConfig::set_config_value(&mut mut_cfg, &config_keys::system::THREADS, 1usize);
         let scheduler = self.scheduler.clone();
@@ -337,6 +338,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         let dispatcher = SimulationNetworkConfig::default().build(self.network.clone());
         mut_cfg.system_components(DeadletterBox::new, dispatcher);
         let system = mut_cfg.build().expect("system");
+        self.set_scheduling_choice(SimulatedScheduling::Queue);
         self.systems.push(system.clone());
         system
     }
@@ -489,16 +491,11 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
 
 
     pub fn simulate_step(&mut self) -> () {
-
-        //println!("Step ID: {}", self.simulation_step_count);
-        //self.print_all_actor_states();
-        self.write_states_to_file();
-        self.simulation_step_count += 1;
-
-        self.next_timer();
-        
         match self.get_work(){
             Some(w) => {
+                self.write_states_to_file();
+                self.simulation_step_count += 1;
+                self.next_timer();
                 let res = w.execute();
                 match res {
                     SchedulingDecision::Schedule => self.scheduler.schedule(w), //self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
