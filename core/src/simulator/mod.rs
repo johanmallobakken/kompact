@@ -225,6 +225,10 @@ impl SimulationScheduler {
         self.0.as_ref().borrow_mut().queue.push_back(c);
     }
 
+    fn push_front_to_queue(&self, c: Arc<dyn CoreContainer>){
+        self.0.as_ref().borrow_mut().queue.push_front(c);
+    }
+
     fn pop_from_queue(&self) -> Option<Arc<dyn CoreContainer>>{
         self.0.as_ref().borrow_mut().queue.pop_front()
     }
@@ -499,7 +503,8 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
             Some(w) => {
                 let res = w.execute();
                 match res {
-                    SchedulingDecision::Schedule | SchedulingDecision::Resume => self.scheduler.schedule(w), //self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),                    
+                    SchedulingDecision::Schedule => self.scheduler.schedule(w), //self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
+                    SchedulingDecision::Resume => self.scheduler.0.as_ref().borrow_mut().queue.push_front(w), 
                     SchedulingDecision::NoWork | SchedulingDecision::Blocked => (),
                     SchedulingDecision::AlreadyScheduled => panic!("Already Scheduled"),
                 }
