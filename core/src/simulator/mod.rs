@@ -356,7 +356,6 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
     {
         self.set_scheduling_choice(SimulatedScheduling::Now);
         let (component, registration_future) = sys.create_and_register(f);
-
         //self.monitor_actor(actor)
         let path = registration_future.wait_expect(register_timeout, "Failed to Register create_and_register");
         self.set_scheduling_choice(SimulatedScheduling::Queue);
@@ -410,6 +409,19 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         }
 
         let res = future.wait();
+        self.set_scheduling_choice(SimulatedScheduling::Queue);
+        res
+    }
+
+    pub fn schedule_now<F, O>(
+        &mut self, 
+        f: F
+    ) -> O
+      where
+        F: FnOnce() -> O
+    {
+        self.set_scheduling_choice(SimulatedScheduling::Now);
+        let res = f(); // waiting etc happens internally in f.
         self.set_scheduling_choice(SimulatedScheduling::Queue);
         res
     }
