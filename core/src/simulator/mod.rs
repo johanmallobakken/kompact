@@ -519,14 +519,20 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
     pub fn simulate_step(&mut self) -> () {
         match self.get_work(){
             Some(w) => {
-                self.next_timer(w.clone());
+                let timer_res = self.next_timer(w.clone());
                 self.write_states_to_file();
                 self.simulation_step_count += 1;
                 let res = w.execute();
                 match res {
                     SchedulingDecision::Schedule | SchedulingDecision::Resume  => self.scheduler.schedule(w), //self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
                     //SchedulingDecision::Resume => self.scheduler.0.as_ref().borrow_mut().queue.push_front(w), 
-                    SchedulingDecision::NoWork | SchedulingDecision::Blocked => (),
+                    SchedulingDecision::NoWork => {
+                        match timer_res {
+                            SimulationStep::Finished => (),
+                            SimulationStep::Ok => self.scheduler.schedule(w),
+                        }
+                    },
+                    SchedulingDecision::Blocked => (),
                     SchedulingDecision::AlreadyScheduled => panic!("Already Scheduled"),
                 }
             },
