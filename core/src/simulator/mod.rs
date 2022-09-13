@@ -516,8 +516,8 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
                 self.simulation_step_count += 1;
                 let res = w.execute();
                 match res {
-                    SchedulingDecision::Schedule => self.scheduler.schedule(w), //self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
-                    SchedulingDecision::Resume => self.scheduler.0.as_ref().borrow_mut().queue.push_front(w), 
+                    SchedulingDecision::Schedule | SchedulingDecision::Resume => self.scheduler.schedule(w), //self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
+                    //SchedulingDecision::Resume => self.scheduler.0.as_ref().borrow_mut().queue.push_front(w), 
                     SchedulingDecision::NoWork | SchedulingDecision::Blocked => (),
                     SchedulingDecision::AlreadyScheduled => panic!("Already Scheduled"),
                 }
