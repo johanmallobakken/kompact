@@ -328,7 +328,6 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
     }
 
     pub fn spawn_system(&mut self, cfg: KompactConfig) -> KompactSystem {
-        self.set_scheduling_choice(SimulatedScheduling::Now);
         let mut mut_cfg = cfg;
         KompactConfig::set_config_value(&mut mut_cfg, &config_keys::system::THREADS, 1usize);
         let scheduler = self.scheduler.clone();
@@ -338,7 +337,6 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         let dispatcher = SimulationNetworkConfig::default().build(self.network.clone());
         mut_cfg.system_components(DeadletterBox::new, dispatcher);
         let system = mut_cfg.build().expect("system");
-        self.set_scheduling_choice(SimulatedScheduling::Queue);
         self.systems.push(system.clone());
         system
     }
