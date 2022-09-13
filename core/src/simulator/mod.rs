@@ -491,11 +491,11 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
 
 
     pub fn simulate_step(&mut self) -> () {
+        self.next_timer();
         match self.get_work(){
             Some(w) => {
                 self.write_states_to_file();
                 self.simulation_step_count += 1;
-                self.next_timer();
                 let res = w.execute();
                 match res {
                     SchedulingDecision::Schedule => self.scheduler.schedule(w), //self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
