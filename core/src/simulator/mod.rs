@@ -290,7 +290,8 @@ impl<T> SimualtionState<T>{
 pub struct SimulationScenario<T>{
     systems: Vec<KompactSystem>,
     scheduler: SimulationScheduler,
-    timer: SimulationTimer,
+    timers: HashMap<SystemPath, SimulationTimer>,
+    //timer: SimulationTimer,
     network: Arc<Mutex<SimulationNetwork>>,
     monitored_invariants: Vec<Arc<dyn Invariant<T>>>,
     monitored_actors: Vec<Arc<dyn GetState<T>>>,
@@ -304,7 +305,8 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         SimulationScenario {
             systems: Vec::new(),
             scheduler: SimulationScheduler(Rc::new(RefCell::new(SimulationSchedulerData::new()))),
-            timer: SimulationTimer(Rc::new(RefCell::new(SimulationTimerData::new()))),
+            timers: HashMap::new(),
+            //timer: SimulationTimer(Rc::new(RefCell::new(SimulationTimerData::new()))),
             //network: Rc::new(RefCell::new(SimulationNetwork::new()))
             network: Arc::new(Mutex::new(SimulationNetwork::new())),
             monitored_actors: Vec::new(),
@@ -334,13 +336,16 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         KompactConfig::set_config_value(&mut mut_cfg, &config_keys::system::THREADS, 1usize);
         let scheduler = self.scheduler.clone();
         mut_cfg.scheduler(move |_| Box::new(scheduler.clone()));
-        let timer = self.timer.clone();
+        //let timer = self.timer.clone();
+        let timer = SimulationTimer(Rc::new(RefCell::new(SimulationTimerData::new())));
+        let new_timer = timer.clone();
         mut_cfg.timer::<SimulationTimer, _>(move || Box::new(timer.clone()));
         let dispatcher = SimulationNetworkConfig::default().build(self.network.clone());
         mut_cfg.system_components(DeadletterBox::new, dispatcher);
         let system = mut_cfg.build().expect("system");
         self.set_scheduling_choice(SimulatedScheduling::Queue);
         self.systems.push(system.clone());
+        self.timers.insert(system.system_path(), new_timer);
         system
     }
 
@@ -458,10 +463,13 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         self.scheduler.0.as_ref().borrow_mut().queue.pop_front()
     }
 
-    fn next_timer(&mut self) -> SimulationStep{
-        let pre_next = self.timer.0.as_ref().borrow_mut().inner.current_time();
-        let next_res = self.timer.0.as_ref().borrow_mut().inner.next();
-        let post_next = self.timer.0.as_ref().borrow_mut().inner.current_time();
+    fn next_timer(&mut self, component: Arc<dyn CoreContainer>) -> SimulationStep{
+
+        let timer = self.timers.get(&component.system().system_path()).unwrap();
+
+        let pre_next = timer.0.as_ref().borrow_mut().inner.current_time();
+        let next_res = timer.0.as_ref().borrow_mut().inner.next();
+        let post_next = timer.0.as_ref().borrow_mut().inner.current_time();
         let diff = post_next - pre_next;
         //println!("timer pre {} post {} diff {}", pre_next, post_next, diff);
         next_res
@@ -509,9 +517,9 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
 
 
     pub fn simulate_step(&mut self) -> () {
-        self.next_timer();
         match self.get_work(){
             Some(w) => {
+                self.next_timer(w.clone());
                 self.write_states_to_file();
                 self.simulation_step_count += 1;
                 let res = w.execute();
