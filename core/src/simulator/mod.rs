@@ -476,7 +476,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
                 println!("advanced virtual time for {} with {} nextres SimulationStep::Finished", &component.system().system_path(), diff);
             },
             SimulationStep::Ok => {
-                println!("advanced virtual time for {} with {} nextres SimulationStep::Ok", &component.system().system_path(), diff);
+                //println!("advanced virtual time for {} with {} nextres SimulationStep::Ok", &component.system().system_path(), diff);
             },
         }
         next_res
@@ -543,7 +543,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
                 self.write_states_to_file();
                 self.simulation_step_count += 1;
                 
-                println!("Simulating step: {}", self.simulation_step_count);
+                //println!("Simulating step: {}", self.simulation_step_count);
                 let res = w.execute();
                 match res {
                     SchedulingDecision::Schedule => {
@@ -556,7 +556,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
                     }, //self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
                     //SchedulingDecision::Resume => self.scheduler.0.as_ref().borrow_mut().queue.push_front(w), 
                     SchedulingDecision::NoWork => {
-                        println!("NO WORK");
+                        //println!("NO WORK");
                         match timer_res {
                             SimulationStep::Finished => (),
                             SimulationStep::Ok => self.scheduler.schedule(w),

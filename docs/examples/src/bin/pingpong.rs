@@ -110,7 +110,7 @@ impl Actor for Pinger {
 
 impl Pinger {
     fn start_timer(&mut self){
-        let ready_timer = self.schedule_periodic(Duration::from_millis(0), Duration::from_millis(10), move |c, _| {
+        let ready_timer = self.schedule_periodic(Duration::from_millis(0), Duration::from_millis(50), move |c, _| {
             c.on_ready()
         });
 
@@ -118,7 +118,7 @@ impl Pinger {
     }
 
     fn on_ready(&mut self) -> Handled{
-        println!("onready! Sending PING to PONGER");
+        println!("onready! Sending PING to PONGER {}", self.counter + 1);
         self.actor_path.tell((Ping, Serde), self);
         Handled::Ok
     }
@@ -212,13 +212,7 @@ pub fn sim() {
     sys2.start(&ponger);
     sys1.start(&pinger);
 
-    for _ in 0..50{
-        simulation.simulate_step();
-    }
-
-    simulation.break_link(&sys2, &sys1);
-
-    for _ in 0..50{
+    for _ in 0..9999999{
         simulation.simulate_step();
     }
 } 
