@@ -559,7 +559,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
                         //println!("NO WORK");
                         match timer_res {
                             SimulationStep::Finished => (),
-                            SimulationStep::Ok => self.scheduler.schedule(w),
+                            SimulationStep::Ok => ()//self.scheduler.schedule(w),
                         }
                     },
                     SchedulingDecision::Blocked => {
