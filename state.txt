@@ -1,0 +1,9 @@
+0
+PingPongState { count: 0 }
+PingPongState { count: 0 }
+8
+PingPongState { count: 1 }
+PingPongState { count: 0 }
+12
+PingPongState { count: 1 }
+PingPongState { count: 1 }

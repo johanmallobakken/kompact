@@ -3,9 +3,10 @@ use kompact::{prelude::*, serde_serialisers::*};
 use serde::{Deserialize, Serialize};
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
+use std::cmp::{min, max};
 use std::fmt::Display;
 use std::rc::Rc;
-use std::sync::Mutex;
+use std::sync::{Mutex, Arc};
 use std::{
     time::Duration,
     thread::{
@@ -23,8 +24,9 @@ struct Pinger {
 
 #[derive(ComponentDefinition)]
 struct Ponger {
-    lol: ComponentContext<Self>,
-    counter: u64
+    ctx: ComponentContext<Self>,
+    counter: u64,
+    timer: Option<ScheduledTimer>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -58,32 +60,22 @@ impl Pinger {
 impl Ponger {
     pub fn new() -> Self {
         Ponger {
-            lol: ComponentContext::uninitialised(),
-            counter: 0
+            ctx: ComponentContext::uninitialised(),
+            counter: 0,
+            timer: None
         }
     }
 }
 
 impl ComponentLifecycle for Pinger {
     fn on_start(&mut self) -> Handled {
-        //info!(self.log(), "Pinger started!");
-        println!("Pinger started!!!!");
-        self.start_timer();
         self.actor_path.tell((Ping, Serde), self);
         Handled::Ok
     }
 }
+impl ComponentLifecycle for Ponger {}
 
-
-impl ComponentLifecycle for Ponger {
-    fn on_start(&mut self) -> Handled {
-        //info!(self.log(), "Ponger started!");
-        println!("Ponger started!!!!");
-        Handled::Ok
-    }
-}
-
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct PingPongState {
     count: u64
 }
@@ -106,9 +98,6 @@ impl Actor for Pinger {
         match msg.data.try_deserialise::<Pong, Serde>() {
             Ok(_ping) => {
                 self.counter += 1;
-                println!("!!! RECIEVED PONG {} IN PINGER !!!", self.counter);
-                //info!(self.log(), "RECIEVED PONG {} IN PINGER", self.counter);
-                sender.tell((Ping, Serde), self)
             }
             Err(e) => warn!(self.log(), "Invalid data: {:?}", e),
         }
@@ -118,18 +107,19 @@ impl Actor for Pinger {
 
 impl Pinger {
     fn start_timer(&mut self){
-        let ready_timer = self.schedule_periodic(Duration::from_millis(0), Duration::from_millis(1), move |c, _| {
-            println!("SCHEDULED PERIODICCCCCCC ready_timer");
+        let ready_timer = self.schedule_periodic(Duration::from_millis(0), Duration::from_millis(10), move |c, _| {
             c.on_ready()
         });
+
         self.timer = Some(ready_timer);
     }
 
     fn on_ready(&mut self) -> Handled{
-        println!("TIMEOUT IN PINGERRRRR");
+        self.actor_path.tell((Ping, Serde), self);
         Handled::Ok
     }
 }
+
 
 impl Actor for Ponger {
     type Message = Never;
@@ -143,8 +133,6 @@ impl Actor for Ponger {
         match msg.data.try_deserialise::<Ping, Serde>() {
             Ok(_ping) => {
                 self.counter += 1;
-                println!("!!! RECIEVED PING {} IN PONGER !!!", self.counter);
-                //info!(self.log(), "RECIEVED PING {} IN PONGER", self.counter);
                 sender.tell((Pong, Serde), self)
             }
             Err(e) => warn!(self.log(), "Invalid data: {:?}", e),
@@ -153,96 +141,82 @@ impl Actor for Ponger {
     }
 }
 
-impl GetState<PingPongState> for Pinger {
+impl GetState<PingPongState> for Component<Pinger> {
     fn get_state(&self) -> PingPongState {
+        let def = &self.mutable_core.lock().unwrap().definition;
         PingPongState {
-            count: self.counter
+            count: def.counter
+        }
+    }
+}
+impl GetState<PingPongState> for Component<Ponger>  {
+    fn get_state(&self) -> PingPongState {
+        let def = &self.mutable_core.lock().unwrap().definition;
+        PingPongState {
+            count: def.counter
         }
     }
 }
 
-impl GetState<PingPongState> for Ponger {
-    fn get_state(&self) -> PingPongState {
-        PingPongState {
-            count: self.counter
+struct BalancedCountInvariant {}
+impl Invariant<PingPongState> for BalancedCountInvariant {
+    fn check(&self, states: Vec<PingPongState>) -> Result<(), SimulationError> {
+        let min = states.iter().map(|s| s.count).min().unwrap();
+        let max = states.iter().map(|s| s.count).max().unwrap();
+        if max-min > 1 {
+            return Err(SimulationError{message: "Count unbalanced".to_string()});
         }
+        Ok(())
     }
 }
 
 
 pub fn sim() {
-    let mut simulation: SimulationScenario<PingPongState> = SimulationScenario::new();
+    let mut simulation: SimulationScenario<PingPongState> =
+    SimulationScenario::new();
 
-    let cfg2 = KompactConfig::default();
-    let sys2 = simulation.spawn_system(cfg2);
-    let cfg1 = KompactConfig::default();
-    let sys1 = simulation.spawn_system(cfg1);
-    
-    let (ponger, path) = simulation.create_and_register(
-        &sys2, 
-        Ponger::new, 
-        Duration::from_millis(1000)
-    );
-    let (pinger, _) = simulation.create_and_register(
-        &sys1, 
-        move || Pinger::new(path), 
-        Duration::from_millis(1000)
-    );
+    let sys2 = simulation.spawn_system(KompactConfig::default());
+    let sys1 = simulation.spawn_system(KompactConfig::default());
+
+    let (ponger, path) = simulation.schedule_now(|| {
+        let (ponger, registration_future) = sys2.create_and_register(Ponger::new);
+
+        let path = registration_future.wait_expect(
+            Duration::from_millis(1000), 
+            "actor never registered"
+        );
+        (ponger, path)
+    });
+
+    let pinger = simulation.schedule_now(|| {
+        let (pinger, registration_future) = 
+        sys1.create_and_register(move || Pinger::new(path));
+
+        registration_future.wait_expect(
+            Duration::from_millis(1000), 
+            "actor never registered"
+        );
+        pinger
+    });
+
+    simulation.monitor_component(ponger.clone());
+    simulation.monitor_component(pinger.clone());
+
+    simulation.monitor_invariant(Arc::new(BalancedCountInvariant {}));
     
     sys2.start(&ponger);
-    println!("start in main");
     sys1.start(&pinger);
-    println!("start in main 2");
-    
-    println!("start in main 1 {:?}", simulation.simulate_step());
-    println!("start in main 2 {:?}", simulation.simulate_step());
-    println!("start in main 3 {:?}", simulation.simulate_step());
-    println!("start in main 4 {:?}", simulation.simulate_step());
-    println!("start in main 5 {:?}", simulation.simulate_step());
-    println!("start in main 6 {:?}", simulation.simulate_step());
-    println!("start in main 7 {:?}", simulation.simulate_step());
-    println!("start in main 8 {:?}", simulation.simulate_step());
-    println!("start in main 9 {:?}", simulation.simulate_step());
-    println!("start in main 10 {:?}", simulation.simulate_step());
-    println!("start in main 11 {:?}", simulation.simulate_step());
-    println!("start in main 12 {:?}", simulation.simulate_step());
-    println!("start in main 13 {:?}", simulation.simulate_step());
-    println!("start in main 14 {:?}", simulation.simulate_step());
 
-    //simulation.break_link(sys1.clone(), sys2.clone());
+    for _ in 0..50{
+        simulation.simulate_step();
+    }
 
-    println!("start in main 15 {:?}", simulation.simulate_step());
-    println!("start in main 16 {:?}", simulation.simulate_step());
-    println!("start in main 17 {:?}", simulation.simulate_step());
+    simulation.break_link(&sys2, &sys1);
 
-    //simulation.restore_link(sys1.clone(), sys2.clone());
-
-
-    println!("start in main 18 {:?}", simulation.simulate_step());
-    println!("start in main 19 {:?}", simulation.simulate_step());
-    println!("start in main 20 {:?}", simulation.simulate_step());
-    println!("start in main 21 {:?}", simulation.simulate_step());
-    println!("start in main 22 {:?}", simulation.simulate_step());
-    println!("start in main 23 {:?}", simulation.simulate_step());
-    println!("start in main 24 {:?}", simulation.simulate_step());
-    println!("start in main 25 {:?}", simulation.simulate_step());
-    println!("start in main 26 {:?}", simulation.simulate_step());
-    println!("start in main 27 {:?}", simulation.simulate_step());
-    println!("start in main 28 {:?}", simulation.simulate_step());
-    println!("start in main 29 {:?}", simulation.simulate_step());
-    println!("start in main 30 {:?}", simulation.simulate_step());
-    println!("start in main 31 {:?}", simulation.simulate_step());
-    println!("start in main 32 {:?}", simulation.simulate_step());
-
-    println!("done simulation steps");
-    
-    simulation.shutdown_system(sys1);
-    println!("shutdown");
-
-    simulation.shutdown_system(sys2);
-    println!("shutdown 2");
+    for _ in 0..50{
+        simulation.simulate_step();
+    }
 } 
-
 
 
 pub fn nonsim() {

@@ -18,4 +18,6 @@ pub trait Invariant<T>{
 pub trait ProgressCounter {
     fn get_progress(&self) -> u64;
 }
-pub struct SimulationError{}
+pub struct SimulationError{
+    pub message: String
+}

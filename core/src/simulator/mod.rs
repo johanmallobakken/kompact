@@ -299,7 +299,7 @@ pub struct SimulationScenario<T>{
     prev_state_string: String
 }
 
-impl<T: Debug + Display + 'static> SimulationScenario<T>{
+impl<T: Clone + Debug + Display + 'static> SimulationScenario<T>{
     pub fn new() -> SimulationScenario<T>{
         SimulationScenario {
             systems: Vec::new(),
@@ -463,7 +463,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         let next_res = self.timer.0.as_ref().borrow_mut().inner.next();
         let post_next = self.timer.0.as_ref().borrow_mut().inner.current_time();
         let diff = post_next - pre_next;
-        //println!("timer pre {} post {} diff {}", pre_next, post_next, diff);
+        println!("timer pre {} post {} diff {}", pre_next, post_next, diff);
         next_res
     }
 
@@ -509,6 +509,15 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
 
 
     pub fn simulate_step(&mut self) -> () {
+
+        let states = self.get_all_actor_states();
+        for invariant in self.monitored_invariants.clone(){
+            match invariant.check(states.clone()) {
+                Ok(_) => (),
+                Err(err) => println!("SimulationError: {}", err.message),
+            }
+        }
+
         self.next_timer();
         match self.get_work(){
             Some(w) => {
@@ -522,7 +531,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
                     SchedulingDecision::AlreadyScheduled => panic!("Already Scheduled"),
                 }
             },
-            None => ()
+            None => println!("nowork")
         }
     }
 
@@ -539,7 +548,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         self.monitored_invariants.push(invariant);
         return self.monitored_invariants.len() - 1
     }
-    pub fn monitor_actor(&mut self, actor: Arc<dyn GetState<T>>) {
+    pub fn monitor_component(&mut self, actor: Arc<dyn GetState<T>>) {
         self.monitored_actors.push(actor);
     }
         /* 
