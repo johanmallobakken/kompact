@@ -297,7 +297,8 @@ pub struct SimulationScenario<T>{
     monitored_actors: Vec<Arc<dyn GetState<T>>>,
     simulation_step_count: u64,
     state_file: Rc<RefCell<File>>,
-    prev_state_string: String
+    prev_state_string: String,
+    last_executed_system: Option<SystemPath>
 }
 
 impl<T: Debug + Display + 'static> SimulationScenario<T>{
@@ -313,7 +314,8 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
             monitored_invariants: Vec::new(),
             simulation_step_count: 0,
             state_file: Rc::new(RefCell::new(File::create("state.txt").unwrap())),
-            prev_state_string: String::new()
+            prev_state_string: String::new(),
+            last_executed_system: None
         }
     }
 
@@ -464,14 +466,19 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
     }
 
     fn next_timer(&mut self, component: Arc<dyn CoreContainer>) -> SimulationStep{
-
         let timer = self.timers.get(&component.system().system_path()).unwrap();
-
         let pre_next = timer.0.as_ref().borrow_mut().inner.current_time();
         let next_res = timer.0.as_ref().borrow_mut().inner.next();
         let post_next = timer.0.as_ref().borrow_mut().inner.current_time();
         let diff = post_next - pre_next;
-        //println!("timer pre {} post {} diff {}", pre_next, post_next, diff);
+        match next_res{
+            SimulationStep::Finished => {
+                println!("advanced virtual time for {} with {} nextres SimulationStep::Finished", &component.system().system_path(), diff);
+            },
+            SimulationStep::Ok => {
+                println!("advanced virtual time for {} with {} nextres SimulationStep::Ok", &component.system().system_path(), diff);
+            },
+        }
         next_res
     }
 
@@ -519,9 +526,22 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
     pub fn simulate_step(&mut self) -> () {
         match self.get_work(){
             Some(w) => {
-                let timer_res = self.next_timer(w.clone());
+                let timer_res = match &self.last_executed_system{
+                    Some(sys_path) => {
+                        if *sys_path != w.system().system_path() {
+                            self.next_timer(w.clone())
+                        } else {
+                            SimulationStep::Ok
+                        }
+                    },
+                    None => SimulationStep::Ok,
+                };
+
+                self.last_executed_system = Some(w.system().system_path());
+
                 self.write_states_to_file();
                 self.simulation_step_count += 1;
+                println!("Simulating step: {}", self.simulation_step_count);
                 let res = w.execute();
                 match res {
                     SchedulingDecision::Schedule | SchedulingDecision::Resume  => self.scheduler.schedule(w), //self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
@@ -553,7 +573,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         self.monitored_invariants.push(invariant);
         return self.monitored_invariants.len() - 1
     }
-    pub fn monitor_actor(&mut self, actor: Arc<dyn GetState<T>>) {
+    pub fn monitor_component(&mut self, actor: Arc<dyn GetState<T>>) {
         self.monitored_actors.push(actor);
     }
         /* 
