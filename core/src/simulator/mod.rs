@@ -476,7 +476,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
                 println!("advanced virtual time for {} with {} nextres SimulationStep::Finished", &component.system().system_path(), diff);
             },
             SimulationStep::Ok => {
-                //println!("advanced virtual time for {} with {} nextres SimulationStep::Ok", &component.system().system_path(), diff);
+                println!("advanced virtual time for {} with {} nextres SimulationStep::Ok", &component.system().system_path(), diff);
             },
         }
         next_res
@@ -537,6 +537,8 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
                     },
                     None => SimulationStep::Ok,
                 };*/
+
+                println!("SYSPATH: {}", w.system().system_path());
 
                 //self.last_executed_system = Some(w.system().system_path());
                 let timer_res = self.next_timer(w.clone());
