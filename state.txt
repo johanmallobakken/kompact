@@ -1,30 +1,24 @@
 0
 PingPongState { count: 0 }
 PingPongState { count: 0 }
-10
+9
 PingPongState { count: 1 }
-PingPongState { count: 0 }
-19
-PingPongState { count: 3 }
 PingPongState { count: 0 }
 20
-PingPongState { count: 3 }
 PingPongState { count: 1 }
-33
-PingPongState { count: 6 }
 PingPongState { count: 1 }
 34
-PingPongState { count: 6 }
+PingPongState { count: 2 }
+PingPongState { count: 1 }
+46
 PingPongState { count: 3 }
+PingPongState { count: 1 }
 51
-PingPongState { count: 9 }
 PingPongState { count: 3 }
-52
-PingPongState { count: 9 }
-PingPongState { count: 6 }
+PingPongState { count: 2 }
 73
-PingPongState { count: 12 }
-PingPongState { count: 6 }
-98
-PingPongState { count: 15 }
-PingPongState { count: 6 }
+PingPongState { count: 4 }
+PingPongState { count: 2 }
+94
+PingPongState { count: 5 }
+PingPongState { count: 2 }

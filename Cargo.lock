@@ -960,7 +960,7 @@ dependencies = [
 [[package]]
 name = "hierarchical_hash_wheel_timer"
 version = "1.1.0"
-source = "git+https://github.com/johanmallobakken/rust-hash-wheel-timer#155b54021bf480dd8985e2ed44756ce4a80429d2"
+source = "git+https://github.com/johanmallobakken/rust-hash-wheel-timer#3263317e8babc4d33e791ba0ab0470addcc0741c"
 dependencies = [
  "crossbeam-channel 0.5.6",
  "rustc-hash",

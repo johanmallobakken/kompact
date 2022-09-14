@@ -468,7 +468,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
     fn next_timer(&mut self, component: Arc<dyn CoreContainer>) -> SimulationStep{
         let timer = self.timers.get(&component.system().system_path()).unwrap();
         let pre_next = timer.0.as_ref().borrow_mut().inner.current_time();
-        let next_res = timer.0.as_ref().borrow_mut().inner.next();
+        let next_res = timer.0.as_ref().borrow_mut().inner.next_one_ms();
         let post_next = timer.0.as_ref().borrow_mut().inner.current_time();
         let diff = post_next - pre_next;
         match next_res{
@@ -526,6 +526,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
     pub fn simulate_step(&mut self) -> () {
         match self.get_work(){
             Some(w) => {
+                /* 
                 let timer_res = match &self.last_executed_system{
                     Some(sys_path) => {
                         if *sys_path != w.system().system_path() {
@@ -535,24 +536,35 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
                         }
                     },
                     None => SimulationStep::Ok,
-                };
+                };*/
 
-                self.last_executed_system = Some(w.system().system_path());
-
+                //self.last_executed_system = Some(w.system().system_path());
+                let timer_res = self.next_timer(w.clone());
                 self.write_states_to_file();
                 self.simulation_step_count += 1;
+                
                 println!("Simulating step: {}", self.simulation_step_count);
                 let res = w.execute();
                 match res {
-                    SchedulingDecision::Schedule | SchedulingDecision::Resume  => self.scheduler.schedule(w), //self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
+                    SchedulingDecision::Schedule => {
+                        println!("SCHEUDLE");
+                        self.scheduler.schedule(w)
+                    },
+                    SchedulingDecision::Resume  => {
+                        println!("RESUME");
+                        self.scheduler.schedule(w)
+                    }, //self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
                     //SchedulingDecision::Resume => self.scheduler.0.as_ref().borrow_mut().queue.push_front(w), 
                     SchedulingDecision::NoWork => {
+                        println!("NO WORK");
                         match timer_res {
                             SimulationStep::Finished => (),
                             SimulationStep::Ok => self.scheduler.schedule(w),
                         }
                     },
-                    SchedulingDecision::Blocked => (),
+                    SchedulingDecision::Blocked => {
+                        println!("BLOCKED");
+                    },
                     SchedulingDecision::AlreadyScheduled => panic!("Already Scheduled"),
                 }
             },
@@ -567,8 +579,6 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
     }
 
     //State related
-
-
     pub fn monitor_invariant(&mut self, invariant: Arc<dyn Invariant<T>>) -> usize {
         self.monitored_invariants.push(invariant);
         return self.monitored_invariants.len() - 1
