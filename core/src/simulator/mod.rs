@@ -465,7 +465,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         self.scheduler.0.as_ref().borrow_mut().queue.pop_front()
     }
 
-    fn next_timer(&mut self, component: Arc<dyn CoreContainer>) -> SimulationStep{
+    fn next_timer(&mut self) -> SimulationStep{
         //let timer = self.timers.get(&component.system().system_path()).unwrap();
         let pre_next = self.timer.0.as_ref().borrow_mut().inner.current_time();
         let next_res = self.timer.0.as_ref().borrow_mut().inner.next_one_ms();
@@ -473,7 +473,7 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
         let diff = post_next - pre_next;
         match next_res{
             SimulationStep::Finished => {
-                println!("advanced virtual time for {} with {} nextres SimulationStep::Finished", &component.system().system_path(), diff);
+                //println!("advanced virtual time for {} with {} nextres SimulationStep::Finished", &component.system().system_path(), diff);
             },
             SimulationStep::Ok => {
                 //println!("advanced virtual time for {} with {} nextres SimulationStep::Ok", &component.system().system_path(), diff);
@@ -524,6 +524,8 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
 
 
     pub fn simulate_step(&mut self) -> () {
+        let timer_res = self.next_timer();
+
         match self.get_work(){
             Some(w) => {
                 /* 
@@ -539,7 +541,6 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
                 };*/
 
                 //self.last_executed_system = Some(w.system().system_path());
-                let timer_res = self.next_timer(w.clone());
                 self.write_states_to_file();
                 self.simulation_step_count += 1;
                 
