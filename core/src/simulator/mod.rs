@@ -548,11 +548,11 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
                 let res = w.execute();
                 match res {
                     SchedulingDecision::Schedule => {
-                        println!("SCHEUDLE");
+                        //println!("SCHEUDLE");
                         self.scheduler.schedule(w)
                     },
                     SchedulingDecision::Resume  => {
-                        println!("RESUME");
+                        //println!("RESUME");
                         self.scheduler.schedule(w)
                     }, //self.scheduler.0.as_ref().borrow_mut().queue.push_back(w),
                     //SchedulingDecision::Resume => self.scheduler.0.as_ref().borrow_mut().queue.push_front(w), 
@@ -564,12 +564,21 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
                         }
                     },
                     SchedulingDecision::Blocked => {
-                        println!("BLOCKED");
+                        //println!("BLOCKED");
                     },
                     SchedulingDecision::AlreadyScheduled => panic!("Already Scheduled"),
                 }
             },
             None => ()
+        }
+
+        for invariant in &self.monitored_invariants {
+            match invariant.check(self.get_all_actor_states()){
+                Ok(_) => (),
+                Err(err) => {
+                    println!("Invariant Breached: {} at SimulationStep: {}", err.message, self.simulation_step_count);
+                },
+            }
         }
     }
 
@@ -587,7 +596,15 @@ impl<T: Debug + Display + 'static> SimulationScenario<T>{
     pub fn monitor_component(&mut self, actor: Arc<dyn GetState<T>>) {
         self.monitored_actors.push(actor);
     }
-        /* 
+
+    /*pub fn define_progress(&mut self, ){
+
+    }*/
+    
+    
+    
+    
+    /* 
     pub fn monitor_progress(&mut self, actor: &Arc<dyn ProgressCounter>) {
         // appends it to some struct? 
         todo!()

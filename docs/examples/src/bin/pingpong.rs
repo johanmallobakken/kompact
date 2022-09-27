@@ -100,7 +100,6 @@ impl Actor for Pinger {
             Ok(_ping) => {
                 self.counter += 1;
                 println!("received PONG in PINGER {}", self.counter);
-                //sender.tell((Ping, Serde), self)
             }
             Err(e) => warn!(self.log(), "Invalid data: {:?}", e),
         }
@@ -110,7 +109,9 @@ impl Actor for Pinger {
 
 impl Pinger {
     fn start_timer(&mut self){
-        let ready_timer = self.schedule_periodic(Duration::from_millis(0), Duration::from_millis(50), move |c, _| {
+        let ready_timer = self.schedule_periodic(
+            Duration::from_millis(0), 
+            Duration::from_millis(50), move |c, _| {
             c.on_ready()
         });
 
@@ -206,13 +207,26 @@ pub fn sim() {
 
     simulation.monitor_component(ponger.clone());
     simulation.monitor_component(pinger.clone());
-
     simulation.monitor_invariant(Arc::new(BalancedCountInvariant {}));
+
+    
     
     sys2.start(&ponger);
     sys1.start(&pinger);
 
-    for _ in 0..9999999{
+    for _ in 0..4950{
+        simulation.simulate_step();
+    }
+
+    simulation.break_link(&sys2, &sys1);
+
+    for _ in 0..100{
+        simulation.simulate_step();
+    }
+
+    simulation.restore_link(&sys2, &sys1);
+
+    for _ in 0..4950{
         simulation.simulate_step();
     }
 } 

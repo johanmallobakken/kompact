@@ -266,6 +266,8 @@ impl<CD: ComponentTraits> Component<CD> {
         let max_events = self.core.system.throughput();
         let max_messages = self.core.system.max_messages();
 
+        //println!("max events {}, max messages {}", max_events, max_messages);
+
         match self.mutable_core.lock() {
             Ok(mut guard) => {
                 if guard.definition.ctx().is_blocking() {
@@ -403,6 +405,7 @@ impl<CD: ComponentTraits> Component<CD> {
                 }
                 // then events
                 let rem_events = max_events.saturating_sub(count);
+                //println!("rem events: {}", rem_events);
                 if rem_events > 0 {
                     let skip = guard.skip;
                     let res = guard.definition.execute(rem_events, skip);
@@ -424,6 +427,8 @@ impl<CD: ComponentTraits> Component<CD> {
                         }
                     }
                 }
+
+                println!("work done {}", count);
                 self.core.decrement_work(count)
             }
             _ => {

@@ -124,7 +124,7 @@ impl SimulationNetwork {
             || self.clogged.contains(&dst)
             || self.clogged_link.contains(&(src, dst))
         {
-            println!("Message from: {} to: {} not sent due to broken link", src.to_string(), dst.to_string());
+            //println!("Message from: {} to: {} not sent due to broken link", src.to_string(), dst.to_string());
             trace!("no connection");
             return;
         }

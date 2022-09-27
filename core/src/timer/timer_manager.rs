@@ -227,7 +227,6 @@ pub(crate) struct TimerManager<C: ComponentDefinition> {
 
 impl<C: ComponentDefinition> TimerManager<C> {
     pub(crate) fn new(timer: TimerRef) -> TimerManager<C> {
-
         TimerManager {
             timer,
             timer_queue: Arc::new(ConcurrentQueue::new()),
