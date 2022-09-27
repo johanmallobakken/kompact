@@ -428,7 +428,7 @@ impl<CD: ComponentTraits> Component<CD> {
                     }
                 }
 
-                println!("work done {}", count);
+                //println!("work done {}", count);
                 self.core.decrement_work(count)
             }
             _ => {
